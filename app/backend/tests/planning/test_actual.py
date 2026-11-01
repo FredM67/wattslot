@@ -163,6 +163,20 @@ def test_counter_hourly_daily_counter_reset_at_midnight() -> None:
     assert sum((found or {}).values()) == pytest.approx(0.4)
 
 
+def test_counter_hourly_ignores_a_phantom_high_reading_at_a_restart() -> None:
+    """Redémarrage de Home Assistant : le compteur rapporte un index fantôme haut un instant,
+    puis revient à son index. L'heure du redémarrage garde sa vraie valeur, pas un pic
+    impossible (écarté ensuite par le filtre qualité : trou dans les courbes)."""
+    before = [(at(-0.5), 2000.0)]
+    today = [(at(12 + 5 * i / 60), 2000 + 0.05 * i) for i in range(13)]  # 12 h - 13 h
+    today += [(at(13.17), 5000.65), (at(13.33), 2000.7), (at(13.5), 2000.8)]  # pic à 13 h 10
+
+    found = counter_hourly(before, today, MIDNIGHT, PARIS) or {}
+
+    assert found[13] == pytest.approx(0.25, abs=0.1)  # la vraie hausse de l'heure, pas ~5000 kWh
+    assert sum(found.values()) == pytest.approx(0.8)
+
+
 def as_v1_segments(
     found: list[tuple[datetime, datetime, str, float]], key: str
 ) -> list[dict[str, Any]]:
