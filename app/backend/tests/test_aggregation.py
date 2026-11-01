@@ -80,6 +80,29 @@ def test_a_dropped_meter_back_in_the_next_period_is_not_counted_either() -> None
     assert carry == Carry(at(17), 23147.05)
 
 
+def test_a_meter_spiking_high_an_instant_is_not_counted() -> None:
+    """Relevé fantôme haut un instant (redémarrage de Home Assistant : index erroné, puis retour
+    à l'index) : ni la hausse ni le retour ne comptent — comme une coupure à l'envers."""
+    points = [(at(1), 23147.10), (at(3), 26000.0), (at(4), 23147.15), (at(9), 23147.20)]
+
+    values, carry = compute(Role.ENERGY_IMPORTED, T0, QUARTER_END, Carry(at(-1), 23147.0), points)
+
+    assert values is not None and values.energy_kwh is not None
+    assert round(values.energy_kwh, 6) == 0.2
+    assert carry == Carry(at(9), 23147.2)
+
+
+def test_a_high_reading_that_stays_is_counted() -> None:
+    """Une hausse qui ne revient pas dans le délai de glitch était réelle : elle reste comptée."""
+    points = [(at(1), 100.0), (at(2), 106.0), (at(2) + GLITCH_MAX + timedelta(seconds=1), 106.5)]
+
+    values, carry = compute(Role.ENERGY_IMPORTED, T0, at(30), Carry(at(-1), 100.0), points)
+
+    assert values is not None and values.energy_kwh is not None
+    assert round(values.energy_kwh, 6) == 6.5
+    assert carry == Carry(at(2) + GLITCH_MAX + timedelta(seconds=1), 106.5)
+
+
 def test_a_reset_stays_a_reset_after_the_glitch_delay_or_for_a_small_counter() -> None:
     late = [(at(1), 0.0), (at(1) + GLITCH_MAX + timedelta(seconds=1), 30.0)]
     values, carry = compute(Role.ENERGY_PRODUCED, T0, at(30), Carry(at(0), 30.0), late)

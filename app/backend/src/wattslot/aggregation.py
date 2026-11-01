@@ -57,7 +57,9 @@ INTERVAL_S = 60.0
 CATCH_UP_MAX = timedelta(days=3)  # conservation du brut : rien à relire au-delà
 RESET_RATIO = 0.9
 # Coupure d'un compteur (un Linky qui envoie 0 un instant, puis son index) : retour à l'index
-# d'avant la baisse dans ce délai. Au-delà, la baisse était une vraie remise à zéro.
+# d'avant la baisse dans ce délai. Au-delà, la baisse était une vraie remise à zéro. Symétriquement,
+# un relevé fantôme haut (redémarrage de HA) suivi d'un retour à l'index d'avant la hausse dans ce
+# délai est annulé.
 GLITCH_MAX = timedelta(minutes=10)
 # … et d'un seul relevé, d'au moins tant : en dix minutes, 30 kW, hors de portée d'une maison. Un
 # petit compteur remis à zéro qui remonte vite reste une remise à zéro.
@@ -79,6 +81,16 @@ class Drop:
     """Baisse d'un compteur pas encore confirmée comme remise à zéro : index d'avant et heure."""
 
     time: datetime
+    value: float
+
+
+@dataclass(frozen=True)
+class Rise:
+    """Hausse d'un compteur pas encore confirmée comme réelle : index d'avant, valeur haute et
+    heure (un relevé fantôme, typiquement au redémarrage de Home Assistant)."""
+
+    time: datetime
+    base: float
     value: float
 
 
@@ -186,26 +198,42 @@ def compute(
 
 
 class CounterState:
-    """Suivi d'un compteur d'énergie relevé après relevé : base (plus haute valeur retenue) et
-    baisse en suspens. Une baisse de plus de 10 % est comptée comme une remise à zéro, mais reste
-    en suspens ``GLITCH_MAX`` : un retour d'un coup (``GLITCH_JUMP_KWH``) à l'index d'avant en
-    fait une coupure du capteur, et seule l'énergie au-delà de cet index compte. Partagé par les
-    agrégats et par la journée en cours (``planning.actual.counter_hourly``)."""
+    """Suivi d'un compteur d'énergie relevé après relevé : base (plus haute valeur retenue),
+    baisse et hausse en suspens. Une baisse de plus de 10 % est comptée comme une remise à
+    zéro, mais reste en suspens ``GLITCH_MAX`` : un retour d'un coup (``GLITCH_JUMP_KWH``) à
+    l'index d'avant en fait une coupure du capteur, et seule l'énergie au-delà de cet index
+    compte. Symétriquement, une hausse d'au moins ``GLITCH_JUMP_KWH`` suivie d'un retour à
+    l'index d'avant dans le même délai est un relevé fantôme (redémarrage de Home Assistant :
+    index erroné un instant), annulée — elle n'est ni comptée, ni recomptée comme remise à
+    zéro au retour. Partagé par les agrégats et par la journée en cours
+    (``planning.actual.counter_hourly``)."""
 
     def __init__(self, base: float | None = None, drop: Drop | None = None) -> None:
         self.base = base
         self.drop = drop
+        self.rise: Rise | None = None
         self._since_drop = 0.0  # énergie comptée depuis la baisse en suspens
+        self._since_rise = 0.0  # énergie comptée depuis la hausse en suspens, au-delà d'elle
 
     def step(self, moment: datetime, value: float) -> float:
-        """Énergie de ce relevé (négative quand une coupure reprend ce qui avait été compté)."""
+        """Énergie de ce relevé (négative quand une coupure ou un relevé fantôme reprend ce qui
+        avait été compté)."""
         drop = self.drop
         if drop is not None and moment - drop.time > GLITCH_MAX:
             drop = self.drop = None  # vraie remise à zéro : ce qui a été compté depuis reste
+        rise = self.rise
+        if rise is not None and moment - rise.time > GLITCH_MAX:
+            rise = self.rise = None  # hausse confirmée : elle reste comptée
         base = self.base
         if base is None:
             self.base = value
             return 0.0
+        if rise is not None and abs(value - rise.base) <= GLITCH_JUMP_KWH:
+            # Relevé fantôme : le compteur est revenu à l'index d'avant la hausse ; celle-ci
+            # est annulée, ainsi que ce qui avait été compté dessus depuis.
+            delta = value - rise.value - self._since_rise
+            self.base, self.rise, self._since_rise = value, None, 0.0
+            return delta
         if (
             drop is not None
             and value >= drop.value * RESET_RATIO
@@ -214,9 +242,14 @@ class CounterState:
             # Coupure : le compteur a retrouvé son index ; seul ce qui le dépasse compte.
             delta = max(0.0, value - drop.value) - self._since_drop
             self.base, self.drop, self._since_drop = max(value, drop.value), None, 0.0
+            self.rise, self._since_rise = None, 0.0
             return delta
         if value >= base:
             delta = value - base
+            if rise is not None:
+                self._since_rise += delta
+            elif delta >= GLITCH_JUMP_KWH:
+                self.rise, self._since_rise = Rise(moment, base, value), 0.0
         elif value < base * RESET_RATIO:
             delta = value  # remise à zéro, en suspens
             if drop is None:
