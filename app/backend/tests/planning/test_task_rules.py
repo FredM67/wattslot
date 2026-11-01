@@ -163,7 +163,9 @@ def test_a_dated_dependency_is_applied_by_the_engine() -> None:
     result = plan_day(problem)
     slots = {i.device: i for i in result.day.items if isinstance(i, Slot)}
     if {"Lave-linge", "Sèche-linge"} <= slots.keys():
-        assert slots["Sèche-linge"].start_min >= slots["Lave-linge"].end_min
+        dryer, washer = slots["Sèche-linge"], slots["Lave-linge"]
+        assert dryer.start_min is not None and washer.end_min is not None
+        assert dryer.start_min >= washer.end_min
 
 
 def test_without_setting_the_task_description_still_applies() -> None:
