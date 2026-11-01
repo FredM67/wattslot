@@ -133,6 +133,54 @@ def test_reconnects_after_home_assistant_restarts() -> None:
     assert client.status.state is ConnectionState.CONNECTED
 
 
+def test_verify_rereads_the_snapshot_when_already_connected() -> None:
+    """« Vérifier à nouveau » avec la connexion établie : l'instantané est relu — HA a pu finir
+    de démarrer depuis la connexion (à la connexion, ``get_states`` ne renvoyait qu'une entité,
+    d'où des alertes « capteur inexistant » figées)."""
+    responses = default_responses()
+    responses["get_states"] = list(responses["get_states"])[:1]  # HA démarre : 1 entité
+
+    async def scenario() -> HomeAssistantClient:
+        async with running_client(fake_home_assistant(responses)) as client:
+            assert set(client.snapshot.states) == {"sensor.solar_energy"}
+            # HA a fini de démarrer : l'entité manquante apparaît.
+            responses["get_states"] = default_responses()["get_states"] + [
+                {"entity_id": "sensor.other", "state": "1", "attributes": {}}
+            ]
+            await client.verify()
+            return client
+
+    client = asyncio.run(scenario())
+
+    assert "sensor.other" in client.snapshot.states
+    assert client.status.state is ConnectionState.CONNECTED
+
+
+def test_the_snapshot_is_reread_shortly_after_connecting(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Connecté pendant le démarrage de HA (``get_states`` partiel) : l'instantané est relu peu
+    après, une fois HA en ligne — sans attendre un redémarrage de l'application."""
+    from wattslot import home_assistant as module
+
+    monkeypatch.setattr(module, "STARTUP_REFRESH_DELAYS_S", (0.05,))
+    responses = default_responses()
+    responses["get_states"] = list(responses["get_states"])[:1]
+
+    async def scenario() -> HomeAssistantClient:
+        async with running_client(fake_home_assistant(responses)) as client:
+            assert "sensor.other" not in client.snapshot.states
+            responses["get_states"] = default_responses()["get_states"] + [
+                {"entity_id": "sensor.other", "state": "1", "attributes": {}}
+            ]
+            async with asyncio.timeout(5):
+                while "sensor.other" not in client.snapshot.states:
+                    await asyncio.sleep(0.01)
+            return client
+
+    client = asyncio.run(scenario())
+
+    assert "sensor.other" in client.snapshot.states
+
+
 def test_concurrent_commands_get_their_own_answers() -> None:
     async def scenario() -> tuple[object, object]:
         async with running_client(fake_home_assistant()) as client:

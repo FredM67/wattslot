@@ -1417,6 +1417,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         if status is not before and status.state is not ConnectionState.CONNECTING:
                             break
                         await asyncio.sleep(0.1)
+        elif client is not None and client.status.state is ConnectionState.CONNECTED:
+            # Déjà connecté : « Vérifier à nouveau » relit l'instantané (HA a pu finir de
+            # démarrer depuis la connexion, avec alors un instantané incomplet).
+            await client.verify()
         return get_connection(request)
 
     @app.post("/api/connection/token")

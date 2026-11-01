@@ -14,7 +14,7 @@ from tests.fake_home_assistant import TOKEN, fake_home_assistant, running_client
 from tests.test_health import _settings
 from wattslot import connection
 from wattslot.connection import ConnectionFailed, StoredConnection, TokenProvider
-from wattslot.home_assistant import ConnectionState
+from wattslot.home_assistant import ConnectionState, HomeAssistantStatus
 from wattslot.main import create_app
 from wattslot.runtime import RunMode, load_settings
 
@@ -213,3 +213,26 @@ def test_the_interface_reconnects_home_assistant_at_once(tmp_path: Path) -> None
         assert retried.status_code == 200
         assert retried.json()["state"] == "error"
         assert retried.json()["error_code"] == "unreachable"
+
+
+def test_verify_again_rereads_the_snapshot_when_already_connected(tmp_path: Path) -> None:
+    """Déjà connecté : « Vérifier à nouveau » relit l'instantané de HA au lieu de ne rien faire
+    (HA a pu finir de démarrer depuis la connexion, avec un instantané incomplet)."""
+    settings = load_settings(
+        {"WATTSLOT_DATA_DIR": str(tmp_path), "HA_URL": "http://127.0.0.1:9", "HA_TOKEN": "x"}
+    )
+    with TestClient(create_app(settings)) as api:
+        calls: list[int] = []
+
+        class StubClient:
+            status = HomeAssistantStatus(ConnectionState.CONNECTED)
+
+            async def verify(self) -> None:
+                calls.append(1)
+
+        api.app.state.home_assistant = StubClient()  # type: ignore[attr-defined]
+
+        retried = api.post("/api/connection/retry")
+
+        assert retried.status_code == 200 and retried.json()["state"] == "connected"
+        assert calls == [1]
