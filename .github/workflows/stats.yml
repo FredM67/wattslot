@@ -1,0 +1,55 @@
+# Statistiques de téléchargement de WattSlot, relevées chaque nuit (lot statistiques de
+# diffusion). Le script `dev/tools/download_stats.py` interroge l'API GitHub : assets des
+# releases (download_count, total et par release) et, avec un jeton, clones du dépôt sur 14
+# jours (proxy des installations de l'extension Home Assistant, que le Supervisor installe en
+# clonant ce dépôt).
+#
+# Le résultat est déposé sur la branche `stats` (jamais sur `main`, protégée) :
+# - `dev/stats/downloads.json` : snapshot de la dernière exécution ;
+# - `dev/stats/history.jsonl` : une ligne par jour, pour garder l'historique au-delà des 14
+#   jours de l'API traffic.
+#
+# Le `GITHUB_TOKEN` de la CI suffit pour les releases (API publique) ; pour les clones, si
+# l'API traffic le refuse, poser un PAT avec scope `repo` (ou permission « Traffic ») dans le
+# secret `STATS_PAT` — il est préféré au `GITHUB_TOKEN` quand il existe.
+name: Stats de téléchargement
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # tous les jours à 06:00 UTC (GitHub peut décaler l'exécution)
+  workflow_dispatch:
+
+permissions:
+  contents: write # branche stats
+
+jobs:
+  stats:
+    name: Relevé quotidien
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Branche stats
+        run: |
+          git fetch origin stats || true
+          git checkout stats 2>/dev/null || git checkout -b stats
+
+      - name: Collecte
+        env:
+          GITHUB_TOKEN: ${{ secrets.STATS_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dev/stats
+          python dev/tools/download_stats.py --json --clones --history dev/stats/history.jsonl \
+            > dev/stats/downloads.json
+
+      - name: Publication
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dev/stats/
+          git diff --cached --quiet || git commit -m "Stats de téléchargement $(date -u +%Y-%m-%d)"
+          git push origin stats
