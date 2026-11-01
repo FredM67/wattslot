@@ -297,6 +297,49 @@ def test_a_meter_dropping_to_zero_is_no_longer_counted(tmp_path: Path) -> None:
     )
 
 
+def test_an_old_automatic_discard_is_reevaluated_on_the_current_raw_rule(tmp_path: Path) -> None:
+    """Une correction automatique « Écarter » posée avec une ancienne règle est recalculée tant
+    que le brut existe : la période redevenue plausible devient RAW — plus de trou figé, ni dans
+    les agrégats ni dans les courbes du jour."""
+    aggregator, store = _linky(tmp_path)
+    spike = T0 + timedelta(hours=2)
+    zone = ZoneInfo("Europe/Paris")
+    target = StubIngestor.targets[LINKY]
+    aggregator._graph.add_nquads(
+        aggregate_nquads(
+            LINKY, target, HOUR, spike, Values(energy_kwh=23147.36), graph_iri(HOUR, spike, zone)
+        )
+    )
+    window = {HOUR: (T0, T0 + timedelta(hours=3))}
+
+    # Posée sans recalcul (règle ancienne) : écartée.
+    first = scan(aggregator, store, HOME, SAVED, window)
+    assert first.anomalies[0].correction is not None
+    assert first.anomalies[0].correction.method is Method.DISCARD
+
+    # Recalculée sur le brut avec la règle actuelle : devenue plausible, remplacée par RAW.
+    second = scan(aggregator, store, HOME, SAVED, window, recompute=aggregator.recompute)
+    correction = second.anomalies[0].correction
+    assert second.corrected == 1
+    assert correction is not None and correction.method is Method.RAW
+    assert correction.corrected_kwh == pytest.approx(0.12)
+    # Stable au tour suivant (plus réévaluée une fois à la bonne valeur).
+    assert (
+        scan(aggregator, store, HOME, SAVED, window, recompute=aggregator.recompute).corrected == 0
+    )
+    # L'agrégat est lu corrigé…
+    assert [
+        a.energy_kwh for a in aggregator.read(LINKY, HOUR, spike, spike + timedelta(hours=1))
+    ] == [pytest.approx(0.12)]
+    # …et la courbe du jour ne perd pas l'heure.
+    content = {
+        "date_cible": T0.date(),
+        "donnees_reelles_cache": {"reseau_reel_soutire_horaire": {2: 0.12}},
+    }
+    healed = corrected_actual(content, store.list(), HOME, zone, house_limit_kwh(HOME, SAVED))
+    assert healed["donnees_reelles_cache"]["reseau_reel_soutire_horaire"][2] == pytest.approx(0.12)
+
+
 def test_a_spike_counted_by_the_old_rule_is_recomputed_on_the_raw_readings(tmp_path: Path) -> None:
     """Heure déjà agrégée avec l'ancienne règle (tout l'index compté) : tant que le brut existe,
     la correction automatique la recalcule au lieu de l'écarter."""

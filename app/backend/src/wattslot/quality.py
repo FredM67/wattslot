@@ -381,7 +381,10 @@ def scan(
 ) -> Scan:
     """Anomalies des compteurs (tous, ou ``entity_ids``) sur chaque période demandée ; les sauts
     et valeurs négatives jamais corrigés le sont si ``automatic`` : recalculés sur le brut quand
-    c'est possible et plausible, écartés sinon."""
+    c'est possible et plausible, écartés sinon. Les corrections automatiques déjà en vigueur sont
+    recalculées de la même façon tant que le brut existe : une règle améliorée peut rendre la
+    période plausible, et la correction « écarter » est alors remplacée par le recalcul (plus de
+    trou figé dans les vues)."""
     wanted = set(entity_ids) if entity_ids is not None else None
     anomalies: list[Anomaly] = []
     corrected = 0
@@ -408,6 +411,26 @@ def scan(
                     else:
                         correction = store.add(anomaly, Method.DISCARD, None, automatic=True)
                     corrected += 1
+                elif (
+                    correction is not None
+                    and correction.automatic
+                    and automatic
+                    and anomaly.kind in AUTOMATIC
+                    and recompute is not None
+                ):
+                    # Correction automatique déjà posée (éventuelle ancienne règle des
+                    # remises à zéro) : tant que le brut existe, on la recalcule avec la règle
+                    # actuelle — une période redevenue plausible n'est plus écartée, la vue
+                    # ne garde pas un trou figé.
+                    value = recompute(sensor.entity_id, period, anomaly.start)
+                    limit = sensor.limit_kwh_per_hour * hours(period)
+                    if (
+                        value is not None
+                        and NEGATIVE_KWH <= value <= limit
+                        and value != correction.corrected_kwh
+                    ):
+                        correction = store.add(anomaly, Method.RAW, value, automatic=True)
+                        corrected += 1
                 anomalies.append(anomaly.model_copy(update={"correction": correction}))
     anomalies.sort(key=lambda a: (a.start, a.entity_id, a.period))
     return Scan(anomalies, corrected)
