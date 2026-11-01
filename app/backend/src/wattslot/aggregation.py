@@ -64,6 +64,11 @@ GLITCH_MAX = timedelta(minutes=10)
 # … et d'un seul relevé, d'au moins tant : en dix minutes, 30 kW, hors de portée d'une maison. Un
 # petit compteur remis à zéro qui remonte vite reste une remise à zéro.
 GLITCH_JUMP_KWH = 5.0
+# Un relevé qui ajoute d'un coup plus que la limite physique d'une heure (36 kVA x marge, comme
+# la limite de la qualité) à une puissance moyenne tout aussi impossible : c'est un saut d'index
+# (redémarrage de HA : mauvais index un temps), pas de l'énergie. Le relevé est ignoré et la base
+# ne bouge pas — le retour à l'index réel, plus tard, redevient alors un delta normal.
+MAX_STEP_KWH = 36.0 * 1.2
 RECOMPUTE_BEFORE = timedelta(hours=1)  # brut relu avant une période recalculée
 DECIMALS = 6  # efface le bruit des calculs en virgule flottante (0.2900000000008731)
 # Reprise de l'historique : agrégats par chargement en masse, plusieurs entités à la fois. Chaque
@@ -205,13 +210,21 @@ class CounterState:
     compte. Symétriquement, une hausse d'au moins ``GLITCH_JUMP_KWH`` suivie d'un retour à
     l'index d'avant dans le même délai est un relevé fantôme (redémarrage de Home Assistant :
     index erroné un instant), annulée — elle n'est ni comptée, ni recomptée comme remise à
-    zéro au retour. Partagé par les agrégats et par la journée en cours
+    zéro au retour. Enfin, un pas qui ajouterait plus que ``MAX_STEP_KWH`` à une puissance
+    moyenne tout aussi impossible est un saut d'index, quelle que soit sa durée : le relevé est
+    ignoré et la base ne bouge pas. Partagé par les agrégats et par la journée en cours
     (``planning.actual.counter_hourly``)."""
 
-    def __init__(self, base: float | None = None, drop: Drop | None = None) -> None:
+    def __init__(
+        self, base: float | None = None, drop: Drop | None = None, last: datetime | None = None
+    ) -> None:
         self.base = base
         self.drop = drop
         self.rise: Rise | None = None
+        self._last = last  # heure du relevé précédent, pour la puissance moyenne d'un pas
+        self.last_counted = (
+            last  # heure du dernier relevé retenu (un saut d'index ne la décale pas)
+        )
         self._since_drop = 0.0  # énergie comptée depuis la baisse en suspens
         self._since_rise = 0.0  # énergie comptée depuis la hausse en suspens, au-delà d'elle
 
@@ -226,13 +239,16 @@ class CounterState:
             rise = self.rise = None  # hausse confirmée : elle reste comptée
         base = self.base
         if base is None:
-            self.base = value
+            self.base, self._last, self.last_counted = value, moment, moment
             return 0.0
+        elapsed = (moment - self._last).total_seconds() / 3600 if self._last is not None else None
+        self._last = moment
         if rise is not None and abs(value - rise.base) <= GLITCH_JUMP_KWH:
             # Relevé fantôme : le compteur est revenu à l'index d'avant la hausse ; celle-ci
             # est annulée, ainsi que ce qui avait été compté dessus depuis.
             delta = value - rise.value - self._since_rise
             self.base, self.rise, self._since_rise = value, None, 0.0
+            self.last_counted = moment
             return delta
         if (
             drop is not None
@@ -243,9 +259,19 @@ class CounterState:
             delta = max(0.0, value - drop.value) - self._since_drop
             self.base, self.drop, self._since_drop = max(value, drop.value), None, 0.0
             self.rise, self._since_rise = None, 0.0
+            self.last_counted = moment
             return delta
         if value >= base:
             delta = value - base
+            if (
+                elapsed is not None
+                and elapsed > 0
+                and delta > MAX_STEP_KWH
+                and delta / elapsed > MAX_STEP_KWH
+            ):
+                # Saut d'index physiquement impossible (redémarrage de HA) : le relevé est
+                # ignoré, la base ne bouge pas — le retour à l'index réel comptera normalement.
+                return 0.0
             if rise is not None:
                 self._since_rise += delta
             elif delta >= GLITCH_JUMP_KWH:
@@ -255,8 +281,10 @@ class CounterState:
             if drop is None:
                 self.drop, self._since_drop = Drop(moment, base), 0.0
         else:
-            return 0.0  # bruit : la base reste la plus haute valeur vue
+            self.last_counted = moment  # bruit : retenu, mais sans énergie
+            return 0.0
         self.base = value
+        self.last_counted = moment
         if self.drop is not None:
             self._since_drop += delta
         return delta
@@ -267,7 +295,9 @@ def _counter(
 ) -> tuple[Values | None, Carry | None]:
     """Énergie d'un compteur sur une période (``CounterState``) et valeur à reporter. Ce qui a
     été compté avant la période depuis une baisse en suspens n'est pas repris."""
-    state = CounterState(carry.value if carry else None, carry.drop if carry else None)
+    state = CounterState(
+        carry.value if carry else None, carry.drop if carry else None, carry.time if carry else None
+    )
     energy = sum(state.step(moment, value) for moment, value in points)
     if state.base is None:
         return None, carry

@@ -144,12 +144,15 @@ def counter_hourly(
     if previous:
         points.insert(0, (midnight, previous[-1][1]))
     found: dict[int, float] = defaultdict(float)
-    state = CounterState(points[0][1])
+    state = CounterState(points[0][1], last=points[0][0])
     for (t0, _), (t1, v1) in itertools.pairwise(points):
+        # Un relevé ignoré (saut d'index) ne décale pas le début du pas : l'énergie retombe
+        # sur l'intervalle depuis le dernier relevé retenu.
+        start = state.last_counted or t0
         delta = state.step(t1, v1)
-        if delta == 0 or t1 <= t0:
+        if delta == 0 or t1 <= start:
             continue
-        for hour, part in _spread(t0, t1, delta, zone).items():
+        for hour, part in _spread(start, t1, delta, zone).items():
             found[hour] += part
     return dict(found)
 

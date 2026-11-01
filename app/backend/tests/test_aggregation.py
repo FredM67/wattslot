@@ -92,6 +92,19 @@ def test_a_meter_spiking_high_an_instant_is_not_counted() -> None:
     assert carry == Carry(at(9), 23147.2)
 
 
+def test_an_impossible_index_jump_is_ignored() -> None:
+    """Saut d'index physiquement impossible (redémarrage de HA, quelle que soit la durée de
+    l'excursion) : le relevé est ignoré et la base ne bouge pas — le retour à l'index réel
+    compte normalement, aucune heure géante n'est produite."""
+    points = [(at(1), 100.0), (at(2), 5000.0), (at(3), 100.2), (at(9), 100.3)]
+
+    values, carry = compute(Role.ENERGY_IMPORTED, T0, QUARTER_END, Carry(at(-1), 100.0), points)
+
+    assert values is not None and values.energy_kwh is not None
+    assert round(values.energy_kwh, 6) == 0.3
+    assert carry == Carry(at(9), 100.3)
+
+
 def test_a_high_reading_that_stays_is_counted() -> None:
     """Une hausse qui ne revient pas dans le délai de glitch était réelle : elle reste comptée."""
     points = [(at(1), 100.0), (at(2), 106.0), (at(2) + GLITCH_MAX + timedelta(seconds=1), 106.5)]

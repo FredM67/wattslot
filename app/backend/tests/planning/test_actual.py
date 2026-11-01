@@ -163,6 +163,26 @@ def test_counter_hourly_daily_counter_reset_at_midnight() -> None:
     assert sum((found or {}).values()) == pytest.approx(0.4)
 
 
+def test_counter_hourly_ignores_a_long_phantom_index_excursion() -> None:
+    """Redémarrage de HA : le compteur rapporte un index faux (haut) de 13 h à 15 h, puis
+    revient à son index réel. Aucune heure impossible : le filtre qualité n'écarte rien, pas de
+    trou dans les courbes (l'énergie du retour est répartie depuis le dernier relevé retenu)."""
+    before = [(at(-0.5), 2000.0)]
+    today = [(at(12 + 5 * i / 60), 2000 + 0.05 * i) for i in range(13)]  # 12 h - 13 h
+    today += [
+        (at(13.17), 4000.0),  # saut d'index à 13 h 10
+        (at(13.5), 4000.1),
+        (at(14.5), 4000.2),
+        (at(15.0), 2000.9),  # retour à l'index réel à 15 h
+        (at(15.5), 2001.0),
+    ]
+
+    found = counter_hourly(before, today, MIDNIGHT, PARIS) or {}
+
+    assert {12, 13, 14, 15} <= set(found)
+    assert all(value < 1.0 for value in found.values())  # aucune heure géante
+
+
 def test_counter_hourly_ignores_a_phantom_high_reading_at_a_restart() -> None:
     """Redémarrage de Home Assistant : le compteur rapporte un index fantôme haut un instant,
     puis revient à son index. L'heure du redémarrage garde sa vraie valeur, pas un pic
