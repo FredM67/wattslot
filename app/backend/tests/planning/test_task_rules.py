@@ -20,9 +20,10 @@ from wattslot.home_model import HomeDevice, HomeModel, HomeSensor
 from wattslot.planning.assemble import configured
 from wattslot.planning.assignment import decide
 from wattslot.planning.engine import plan_day
-from wattslot.planning.inputs import PlanningInput, TaskRequest, from_v1
-from wattslot.planning.plan import BatteryPlan
+from wattslot.planning.inputs import CycleProfile, PlanningInput, TaskRequest, from_v1
+from wattslot.planning.plan import BatteryPlan, Slot
 from wattslot.planning.problem import from_input
+from wattslot.planning.reference import task_key
 from wattslot.planning.simulation import simulate
 from wattslot.storage.graph import GraphStore
 
@@ -109,10 +110,60 @@ def test_a_task_starts_after_the_configured_device() -> None:
     settings = Configuration(devices=[cycle("dryer", after="washer")])
 
     found = {t.name: t for t in configured(data, HOME, settings).waiting_tasks}
-    alone = configured(replace(data, waiting_tasks=(DRYING,)), HOME, settings).waiting_tasks
+    alone_data_base = replace(state(), waiting_tasks=(DRYING,))
+    alone = configured(alone_data_base, HOME, settings).waiting_tasks
 
     assert found["Sèche-linge"].depends_on == "Lave-linge"
-    assert alone[0].depends_on is None  # pas de lessive en attente : rien à suivre
+    # Pas de tâche de lave-linge à placer : la dépendance pointe quand même l'équipement
+    # (résolue via sa fin gelée/lancée, ou ignorée si absent) — le problème tranche.
+    assert alone[0].depends_on is not None
+    alone_data = replace(
+        alone_data_base,
+        waiting_tasks=alone,
+        cycle_profiles={**alone_data_base.cycle_profiles, "Sèche-linge": CycleProfile(2.5, 90.0)},
+    )
+    problem = from_input(alone_data)
+    assert next(t for t in problem.tasks if t.name == "Sèche-linge").depends_on is None
+
+
+def test_a_dated_task_starts_after_the_configured_device() -> None:
+    """Demande planifiée pour un jour (tâche datée, ex. demain) : la règle « démarre après la
+    fin de » s'applique aussi, pas seulement aux tâches en attente."""
+    data = state()
+    due = (replace(WASHING, due=data.day), replace(DRYING, due=data.day))
+    data = replace(data, due_tasks=due, waiting_tasks=())
+    settings = Configuration(devices=[cycle("dryer", after="washer")])
+
+    found = {t.name: t for t in configured(data, HOME, settings).due_tasks}
+
+    assert found["Sèche-linge"].depends_on == "Lave-linge"
+    assert found["Lave-linge"].depends_on is None
+
+
+def test_a_dated_dependency_is_applied_by_the_engine() -> None:
+    """La dépendance d'une tâche datée arrive jusqu'au moteur : si les deux sont placées, le
+    sèche-linge démarre après la fin du lave-linge."""
+    data = state()
+    due = (replace(WASHING, due=data.day), replace(DRYING, due=data.day))
+    data = replace(
+        data,
+        due_tasks=due,
+        waiting_tasks=(),
+        cycle_profiles={
+            "Lave-linge": CycleProfile(2.0, 120.0),
+            "Sèche-linge": CycleProfile(2.5, 90.0),
+        },
+    )
+    settings = Configuration(devices=[cycle("dryer", after="washer")])
+
+    problem = from_input(configured(data, HOME, settings))
+    tasks = {t.name: t for t in problem.tasks}
+    assert tasks["Sèche-linge"].depends_on == task_key("Lave-linge")
+
+    result = plan_day(problem)
+    slots = {i.device: i for i in result.day.items if isinstance(i, Slot)}
+    if {"Lave-linge", "Sèche-linge"} <= slots.keys():
+        assert slots["Sèche-linge"].start_min >= slots["Lave-linge"].end_min
 
 
 def test_without_setting_the_task_description_still_applies() -> None:
