@@ -462,14 +462,13 @@ def configured(
         and found.planned
         and found.behavior is Behavior.RUNTIME
     )
+    due_kept = tuple(t for t in data.due_tasks if planned(t) and t.name not in as_need)
+    waiting_kept = tuple(t for t in data.waiting_tasks if planned(t) and t.name not in as_need)
+    pool = (*due_kept, *waiting_kept)  # la tâche suivie peut être datée ou en attente
     return replace(
         data,
-        due_tasks=tuple(t for t in data.due_tasks if planned(t) and t.name not in as_need),
-        waiting_tasks=_ordered(
-            tuple(t for t in data.waiting_tasks if planned(t) and t.name not in as_need),
-            effective,
-            every,
-        ),
+        due_tasks=_ordered(due_kept, effective, every, pool),
+        waiting_tasks=_ordered(waiting_kept, effective, every, pool),
         max_delay_days={
             task.name: settings.max_delay_days
             for task in data.waiting_tasks
@@ -540,11 +539,17 @@ def _settings_of(
 
 
 def _ordered(
-    waiting: tuple[TaskRequest, ...], effective: Configuration, every: Sequence[Any]
+    waiting: tuple[TaskRequest, ...],
+    effective: Configuration,
+    every: Sequence[Any],
+    pool: Sequence[TaskRequest] | None = None,
 ) -> tuple[TaskRequest, ...]:
-    """« Démarre après la fin de » (lot 3.5) : une tâche en attente d'un équipement réglé ainsi
-    suit celle de l'autre équipement, si elle est aussi en attente ; sans réglage, la
-    dépendance de la description de la tâche (v1) reste."""
+    """« Démarre après la fin de » (lot 3.5) : une tâche d'un équipement réglé ainsi (datée ou
+    en attente) suit celle de l'autre équipement, si elle est aussi à placer. Sinon la
+    dépendance pointe quand même l'équipement : sa fin gelée ou lancée sera appliquée dans le
+    problème, et s'il est absent (déjà fait), aucune contrainte. Sans réglage, la dépendance
+    de la description de la tâche (v1) reste."""
+    others = waiting if pool is None else pool
     found = []
     for task in waiting:
         settings = _settings_of(task, effective, every)
@@ -554,14 +559,18 @@ def _ordered(
         parent = next(
             (
                 other
-                for other in waiting
+                for other in others
                 if other is not task
                 and (appliance := appliance_for(other, every)) is not None
                 and appliance.key == settings.after
             ),
             None,
         )
-        found.append(replace(task, depends_on=parent.name if parent is not None else None))
+        if parent is not None:
+            found.append(replace(task, depends_on=parent.name))
+            continue
+        fallback = next((a.name for a in every if a.key == settings.after), None)
+        found.append(replace(task, depends_on=fallback) if fallback is not None else task)
     return tuple(found)
 
 
