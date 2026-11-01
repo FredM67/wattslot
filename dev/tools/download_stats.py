@@ -28,7 +28,8 @@ de la fenêtre de 14 jours de l'API traffic.
 
 Depuis la racine du dépôt :
 
-    python dev/tools/download_stats.py [--repo jmcruvellier/wattslot] [--json] [--clones] [--history dev/stats/history.jsonl]
+    python dev/tools/download_stats.py [--repo jmcruvellier/wattslot] [--json] [--clones]
+        [--history dev/stats/history.jsonl]
 """
 
 import argparse
@@ -47,7 +48,7 @@ def api_get(path: str, token: str | None) -> object:
     req = urllib.request.Request(f"{API}{path}", headers={"Accept": "application/vnd.github+json"})
     if token:
         req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req) as resp:  # noqa: S310 (API GitHub fixe)
+    with urllib.request.urlopen(req) as resp:
         return json.load(resp)
 
 
@@ -83,8 +84,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--repo", default="jmcruvellier/wattslot", help="owner/repo GitHub")
     parser.add_argument("--json", action="store_true", help="sortie JSON brute")
-    parser.add_argument("--clones", action="store_true", help="aussi lire les clones (jeton requis)")
-    parser.add_argument("--history", metavar="CHEMIN", help="ajoute une ligne JSON (date + snapshot) à ce fichier")
+    parser.add_argument(
+        "--clones", action="store_true", help="aussi lire les clones (jeton requis)"
+    )
+    parser.add_argument(
+        "--history", metavar="CHEMIN", help="ajoute une ligne JSON (date + snapshot) à ce fichier"
+    )
     args = parser.parse_args()
 
     owner, _, repo = args.repo.partition("/")
@@ -115,11 +120,14 @@ def main() -> int:
 
     if args.clones:
         if not token:
-            print("Avertissement : --clones sans jeton (variable GITHUB_TOKEN), clones ignorés.", file=sys.stderr)
+            print(
+                "Avertissement : --clones sans jeton (variable GITHUB_TOKEN), clones ignorés.",
+                file=sys.stderr,
+            )
         else:
             try:
                 result["clones_14j"] = clones(owner, repo, token)
-            except Exception as err:  # l'API traffic exige un jeton avec accès au dépôt
+            except (OSError, ValueError) as err:  # jeton refusé par l'API traffic, JSON en erreur
                 print(f"Avertissement : clones indisponibles ({err}), ignorés.", file=sys.stderr)
 
     if args.history:
