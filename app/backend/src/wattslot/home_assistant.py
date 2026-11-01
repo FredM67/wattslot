@@ -30,6 +30,10 @@ logger = logging.getLogger(__name__)
 
 RETRY_DELAYS_S: tuple[float, ...] = (1, 2, 5, 10, 30)
 COMMAND_TIMEOUT_S = 60.0
+# Relecture de l'instantané peu après une connexion : pendant le démarrage de HA (redémarrage),
+# ``get_states`` ne renvoie que les entités déjà chargées, sans erreur — l'instantané serait
+# incomplet sinon, et ne serait plus jamais relu (alertes « capteur inexistant » figées).
+STARTUP_REFRESH_DELAYS_S: tuple[float, ...] = (60.0, 300.0)
 
 
 class ConnectionState(StrEnum):
@@ -136,6 +140,7 @@ class HomeAssistantClient:
         self._events: dict[int, EventCallback] = {}
         self._on_connected_callbacks: list[ConnectedCallback] = []
         self._wake = asyncio.Event()  # ``retry_now`` interrompt le délai de reconnexion
+        self._startup_refresh: asyncio.Task[None] | None = None  # relectures post-connexion
         self.status = HomeAssistantStatus(ConnectionState.CONNECTING)
         self.snapshot = HomeSnapshot()
 
@@ -180,6 +185,38 @@ class HomeAssistantClient:
     def retry_now(self) -> None:
         """Reconnexion immédiate, demandée par l'interface : le délai en cours est interrompu."""
         self._wake.set()
+
+    async def verify(self) -> None:
+        """« Vérifier à nouveau » quand la connexion est établie : relit l'instantané (HA a pu
+        finir de démarrer depuis la connexion). Si la relecture échoue, la session est refermée
+        pour que ``run`` en ouvre une autre."""
+        if self.status.state is not ConnectionState.CONNECTED or self._websocket is None:
+            return
+        try:
+            await self.refresh_snapshot()
+        except Exception:
+            logger.warning(
+                "Relecture de l'instantané impossible : la session est refermée", exc_info=True
+            )
+            websocket = self._websocket
+            if websocket is not None:
+                with contextlib.suppress(Exception):
+                    await websocket.close()
+
+    async def _refresh_after_startup(self) -> None:
+        """Relit l'instantané peu après la connexion : pendant le démarrage de HA, ``get_states``
+        ne renvoie que les entités déjà chargées, sans erreur."""
+        for delay in STARTUP_REFRESH_DELAYS_S:
+            await asyncio.sleep(delay)
+            if self._websocket is None or self.status.state is not ConnectionState.CONNECTED:
+                return
+            try:
+                await self.refresh_snapshot()
+            except Exception:
+                logger.warning(
+                    "Relecture de l'instantané après connexion impossible", exc_info=True
+                )
+                return
 
     async def command(self, command: str, **params: Any) -> Any:
         """Envoie une commande et attend sa réponse (``result``)."""
@@ -310,6 +347,9 @@ class HomeAssistantClient:
                 await callback()
             except Exception:
                 logger.exception("Erreur après la connexion à Home Assistant")
+        if self._startup_refresh is not None:
+            self._startup_refresh.cancel()
+        self._startup_refresh = asyncio.create_task(self._refresh_after_startup())
         logger.info("Connecté à Home Assistant %s (%s entités)", version, len(snapshot.states))
 
     def _dispatch(self, raw: str | bytes) -> None:
@@ -331,6 +371,9 @@ class HomeAssistantClient:
 
     def _close_session(self) -> None:
         self._websocket = None
+        if self._startup_refresh is not None:
+            self._startup_refresh.cancel()
+            self._startup_refresh = None
         self._events.clear()
         for subscription in self._subscriptions.values():
             subscription.message_id = None
