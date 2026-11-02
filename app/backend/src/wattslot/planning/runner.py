@@ -246,7 +246,14 @@ def with_past(
     return replace(
         data,
         battery=battery,
-        frozen=frozen_cycles(Plan.from_v1(dict(old)) if old else None, data.first_hour),
+        # Un départ choisi pour aujourd'hui n'est pas gelé par un créneau passé du plan
+        # précédent : la tâche est replacée à ce départ (tant qu'il est encore à venir).
+        frozen=tuple(
+            cycle
+            for cycle in frozen_cycles(Plan.from_v1(dict(old)) if old else None, data.first_hour)
+            if cycle.name not in data.chosen_starts
+            or data.chosen_starts[cycle.name] < data.first_hour * 60
+        ),
         runtimes=tuple(
             replace(runtime, past=earlier.get(runtime.name, {})) for runtime in data.runtimes
         ),
@@ -466,8 +473,8 @@ async def run(ctx: Context, now: datetime, manual: bool = False) -> RunReport:
         ctx.configuration,
         ctx.database,
     )
-    data = with_past(data, old, now, ctx)
     data = replace(data, chosen_starts=choices.load(ctx.database, today))
+    data = with_past(data, old, now, ctx)
     # Planifications annulées pour aujourd'hui (bouton « Annuler ») : ni tâche, ni besoin, ni
     # durée à placer ; le calcul de demain les reprendra.
     data = cancelled.without_cancelled(data, cancelled.load(ctx.database, today))
@@ -489,7 +496,11 @@ async def run(ctx: Context, now: datetime, manual: bool = False) -> RunReport:
         },
     )
     merged = merge_plans(
-        state, old, data.first_hour, {k: list(v) for k, v in data.real_segments.items()}
+        state,
+        old,
+        data.first_hour,
+        {k: list(v) for k, v in data.real_segments.items()},
+        chosen=set(data.chosen_starts),
     )
     merged["donnees_reelles_cache"] = _actual(ctx, today, now)
     execution = {"heure_iso": now.astimezone(zone).isoformat(), "manuel": manual}

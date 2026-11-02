@@ -136,12 +136,15 @@ def merge_planning(
     first_hour: int,
     active_tasks: set[str] | None = None,
     real_segments: Mapping[str, list[Segment]] | None = None,
+    chosen: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Équipements du plan fusionné.
 
     ``active_tasks`` : noms des tâches actives d'après la dernière lecture de HA (None : pas de
     filtre). Une tâche retirée n'est plus gelée, sauf si son équipement a tourné aujourd'hui
-    (cycle réel reconnu dans ``real_segments``) : tâche terminée, pas annulée.
+    (cycle réel reconnu dans ``real_segments``) : tâche terminée, pas annulée. ``chosen`` : noms
+    des équipements dont l'utilisateur a choisi le départ — leur ancien créneau passé n'est pas
+    gelé, le nouveau plan l'emporte.
     """
     old_by_name = {item["equipement"]: item for item in old or []}
     new_by_name = {item["equipement"]: item for item in new or []}
@@ -172,7 +175,12 @@ def merge_planning(
                 is not None
             )
         )
-        if old_item and old_item["heure_debut"] < first_hour and still_active:
+        if (
+            old_item
+            and old_item["heure_debut"] < first_hour
+            and still_active
+            and (chosen is None or name not in chosen)
+        ):
             merged.append(old_item)  # commencé ou décidé dans le passé : gelé
         elif name in new_by_name:
             merged.append(new_by_name[name])
@@ -187,8 +195,11 @@ def merge_plans(
     old: Plan | None,
     first_hour: int,
     real_segments: Mapping[str, list[Segment]] | None = None,
+    chosen: set[str] | None = None,
 ) -> Plan:
-    """Plan complet de la journée : passé de ``old``, futur de ``new``."""
+    """Plan complet de la journée : passé de ``old``, futur de ``new``. ``chosen`` : noms des
+    équipements dont l'utilisateur a choisi le départ aujourd'hui — leur ancien créneau passé
+    n'est pas gelé, le nouveau plan les tient."""
     if not old or old.get("date_cible") != new.get("date_cible"):
         return new
     merged = dict(new)
@@ -200,7 +211,7 @@ def merge_plans(
         t["summary"] for t in new.get("taches_en_attente", [])
     }
     merged["planning"] = merge_planning(
-        old.get("planning", []), new.get("planning", []), first_hour, active, real_segments
+        old.get("planning", []), new.get("planning", []), first_hour, active, real_segments, chosen
     )
     placed = {item["equipement"] for item in merged["planning"]}
     merged["avertissements"] = _deduplicated(
@@ -218,9 +229,12 @@ def merge_day(
     old: DayPlan | None,
     first_hour: int,
     real_segments: Mapping[str, list[Segment]] | None = None,
+    chosen: set[str] | None = None,
 ) -> DayPlan:
     """``merge_plans`` sur des plans typés (algorithme de la v1, sur leur format de la v1)."""
-    merged = merge_plans(new.to_v1(), old.to_v1() if old else None, first_hour, real_segments)
+    merged = merge_plans(
+        new.to_v1(), old.to_v1() if old else None, first_hour, real_segments, chosen
+    )
     return DayPlan.from_v1(merged)
 
 
