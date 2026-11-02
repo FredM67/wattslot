@@ -1,8 +1,9 @@
 # Statistiques de téléchargement de WattSlot, relevées chaque nuit (lot statistiques de
-# diffusion). Le script `dev/tools/download_stats.py` interroge l'API GitHub : assets des
-# releases (download_count, total et par release) et, avec un jeton, clones du dépôt sur 14
-# jours (proxy des installations de l'extension Home Assistant, que le Supervisor installe en
-# clonant ce dépôt).
+# diffusion). Le script `dev/tools/download_stats.py` relève les téléchargements de l'image
+# `ghcr.io/jmcruvellier/wattslot` (total et par version, lus sur la page publique du paquet :
+# c'est elle que tirent l'extension Home Assistant et Docker), ceux des assets des releases
+# (l'API GitHub, aucun asset pour l'instant) et, avec un jeton, les clones du dépôt sur 14
+# jours (Home Assistant clone le dépôt de l'extension quand on l'ajoute).
 #
 # Le résultat est déposé sur la branche `stats` (jamais sur `main`, protégée) :
 # - `dev/stats/downloads.json` : snapshot de la dernière exécution ;
@@ -16,7 +17,10 @@ name: Stats de téléchargement
 
 on:
   schedule:
-    - cron: "0 6 * * *" # tous les jours à 06:00 UTC (GitHub peut décaler l'exécution)
+    # Tous les jours vers 04:17 UTC. GitHub décale volontiers les tâches planifiées (jusqu'à
+    # plusieurs heures à l'heure pile, quand tous les dépôts lancent les leurs) : une minute
+    # moins demandée limite le retard.
+    - cron: "17 4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -34,7 +38,9 @@ jobs:
           python-version: "3.11"
 
       - name: Branche stats
+        # Le script vient de main : sur la branche stats ne reste que la copie de sa création.
         run: |
+          cp dev/tools/download_stats.py "$RUNNER_TEMP/"
           git fetch origin stats || true
           git checkout stats 2>/dev/null || git checkout -b stats
 
@@ -43,7 +49,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.STATS_PAT || secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p dev/stats
-          python dev/tools/download_stats.py --json --clones --history dev/stats/history.jsonl \
+          python "$RUNNER_TEMP/download_stats.py" --json --clones --history dev/stats/history.jsonl \
             > dev/stats/downloads.json
 
       - name: Publication
