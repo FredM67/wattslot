@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 from tests.planning.test_assemble import MODEL, TODAY, Reader, client, local
 from wattslot.aggregation import HOUR, QUARTER
+from wattslot.planning import choices
 from wattslot.planning.plan import Plan
 from wattslot.planning.runner import Context, frozen_cycles, past_pool, refresh_actual, run
 from wattslot.planning.sources import PlanningSettings
@@ -154,6 +155,31 @@ def test_a_full_run_then_an_hourly_run_then_the_next_day(tmp_path: Path) -> None
     current = store.load("today")
     assert current is not None and current.day == TODAY + timedelta(days=1)
     assert current.content["derniere_execution"]["manuel"] is False
+
+
+def test_a_chosen_start_moves_a_planned_slot_already_in_the_past(tmp_path: Path) -> None:
+    """Un départ choisi pour aujourd'hui déplace même un créneau déjà passé du plan précédent,
+    tant que l'équipement n'a pas tourné : la frise le propose, le calcul doit le suivre."""
+    reader = reader_with_history()
+    ctx = context(tmp_path, reader)
+    store = PlanStore(ctx.database)
+
+    asyncio.run(run(ctx, local(TODAY, 9, 20), manual=True))
+    today = store.load("today")
+    assert today is not None
+    planning = {item["equipement"]: item for item in today.content["planning"]}
+    washer_start = planning["Lave-linge"]["debut_min"]
+
+    # Le créneau prévu est passé et l'appareil n'a pas démarré : on choisit un autre départ.
+    later = local(TODAY, washer_start // 60 + 1, 5)
+    chosen = (washer_start // 60 + 3) * 60
+    choices.choose(ctx.database, TODAY, "Lave-linge", chosen, later)
+
+    asyncio.run(run(ctx, later))
+    again = store.load("today")
+    assert again is not None
+    item = next(i for i in again.content["planning"] if i["equipement"] == "Lave-linge")
+    assert item["debut_min"] == chosen
 
 
 def test_a_plan_computed_during_the_history_import_is_provisional(tmp_path: Path) -> None:
