@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.9.5
+
+### English
+
+The day charts now read like clockwork, from midnight to midnight — and meters, planning and the Home Assistant connection shrug off restarts.
+
+- **Day charts** (Today / Yesterday / Tomorrow)
+  - The time axis runs from midnight to midnight on every graph, so the last hour of the day (11 pm – midnight) is finally visible instead of being cut off.
+  - Each graph is drawn the way its data deserves: production and consumption as steps filling each whole hour, the grid as bars with a line through them, and the battery level as points placed at the exact moment they describe (the point at 11 pm is the level at midnight).
+  - Tooltips show the real time of each point — "9:22 pm" for a reading taken at 9:22, not just the round hour — along with its time slot ("9 pm – 10 pm").
+  - The ongoing hour now has two points: the forecast at the end of the hour and the live reading in the middle, so the battery or production curve no longer jumps to midnight or stops early.
+  - All points are sorted and the whole day is covered from 0 h to 24 h: no more missing hour in the middle of a curve, and the measured curve ends exactly on the latest reading instead of one point before it.
+
+- **Meters and data quality**
+  - When Home Assistant restarts, a meter can briefly report a wrong (higher) index; this phantom reading is now cancelled like a dropout, so it no longer creates a huge spike or a several-hour gap in your real curves.
+  - A counter jump that is physically impossible — more energy in one step than your installation could ever deliver — is ignored, no matter how long the wrong value lasts; when the real index comes back, it is counted as a normal difference.
+  - Automatic corrections ("discard this reading") are re-checked against the raw measurement as long as it exists: if the value turns out plausible after all, the correction lifts by itself and the charts fill in again within about 15 minutes. Manual corrections are never touched.
+
+- **Planning**
+  - "Starts after" now also works for tasks scheduled on a specific day, not just today's: tomorrow's dryer set to run after the washer is now really placed after it, instead of sometimes before.
+  - If you pick another start time for an appliance whose planned slot has already passed but never started, the appliance now really moves to the new time in the recalculated plan — previously the old slot stayed frozen and the new calculation changed nothing.
+
+- **Home Assistant connection**
+  - If WattSlot reconnects while Home Assistant is still starting up, it re-reads the states of all your entities a little later (about one minute, then five minutes after connecting), so "sensor not found" problems in the application status clear by themselves once Home Assistant is fully up.
+  - "Check again" now really re-reads the states even when the connection already shows as active — before, it did nothing in that state and only restarting the app fixed the problem.
+
+- **Project**
+  - Daily download statistics of the app are now collected automatically every day (a small script queries the GitHub API and a scheduled workflow stores the result), so the team can see how many installations use each version.
+
+### Français
+
+Les courbes du jour se lisent désormais comme une horloge, de minuit à minuit — et compteurs, planning et connexion à Home Assistant encaissent les redémarrages sans accroc.
+
+- **Courbes du jour** (Aujourd'hui / Hier / Demain)
+  - L'axe du temps va désormais de minuit à minuit sur chaque graphe : la dernière heure de la journée (23 h – minuit) est enfin visible au lieu d'être coupée.
+  - Chaque graphe est tracé selon la nature de ses données : production et consommation en paliers remplissant chaque heure entière, réseau en barres traversées par une ligne, niveau de batterie en points placés à l'instant exact qu'ils décrivent (le point de 23 h est le niveau à minuit).
+  - Les info-bulles indiquent l'heure réelle de chaque point — « 21 h 22 » pour un relevé pris à 21 h 22, pas seulement l'heure ronde — avec sa tranche (« 21 h – 22 h »).
+  - La tranche en cours comporte désormais deux points : la prévision à la fin de l'heure et le relevé en direct au milieu ; la courbe de batterie ou de production ne saute donc plus jusqu'à minuit et ne s'arrête plus en avance.
+  - Tous les points sont triés et toute la journée est couverte de 0 h à 24 h : plus d'heure manquante au milieu d'une courbe, et la courbe mesurée s'arrête exactement sur le dernier relevé au lieu de s'arrêter un point avant.
+
+- **Compteurs et qualité des données**
+  - Au redémarrage de Home Assistant, un compteur peut rapporter brièvement un index erroné (plus haut) ; ce relevé fantôme est désormais annulé comme une coupure : plus de pic géant ni de trou de plusieurs heures dans vos courbes réelles.
+  - Un saut de compteur physiquement impossible — plus d'énergie en un seul pas que votre installation ne pourrait jamais en délivrer — est ignoré, quelle que soit la durée de la mauvaise valeur ; quand l'index réel revient, il est compté comme un écart normal.
+  - Les corrections automatiques (« écarter cette mesure ») sont revérifiées contre la mesure brute tant qu'elle existe : si la valeur s'avère finalement plausible, la correction se lève toute seule et les courbes se remplissent à nouveau en environ 15 minutes. Les corrections manuelles ne sont jamais touchées.
+
+- **Planning**
+  - « Démarre après » fonctionne aussi pour les tâches prévues à un jour précis, pas seulement pour aujourd'hui : le sèche-linge de demain réglé « après le lave-linge » est désormais réellement placé après, et non parfois avant.
+  - Si vous choisissez une autre heure de départ pour un appareil dont le créneau prévu est déjà passé mais ne s'est pas lancé, l'appareil est réellement déplacé à la nouvelle heure dans le plan recalculé — auparavant l'ancien créneau restait figé et le nouveau calcul ne changeait rien.
+
+- **Connexion à Home Assistant**
+  - Si WattSlot se reconnecte pendant que Home Assistant démarre encore, il relit un peu plus tard les états de toutes vos entités (environ une minute, puis cinq minutes après la connexion) : les problèmes « capteur introuvable » affichés dans l'état de l'application disparaissent donc d'eux-mêmes une fois Home Assistant complètement démarré.
+  - « Vérifier à nouveau » relit réellement les états même quand la connexion est déjà active — auparavant, il ne faisait rien dans cet état et seul un redémarrage de l'application réglait le problème.
+
+- **Projet**
+  - Des statistiques de téléchargement quotidiennes de l'application sont désormais collectées automatiquement chaque jour (un petit script interroge l'API GitHub et un workflow planifié enregistre le résultat), pour voir combien d'installations utilisent chaque version.
+
 ## 0.9.4
 
 WattSlot speaks more precisely, and the graph of your home becomes an explorer.
