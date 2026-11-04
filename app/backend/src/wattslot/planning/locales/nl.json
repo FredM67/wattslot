@@ -50,5 +50,7 @@
   "assistant.tariff.SingleTariff": "enkel tarief",
   "assistant.tariff.TimeOfUseTariff": "piek- en daluren",
   "assistant.tariff.DayColorTariff": "prijzen volgens de kleur van de dag",
-  "assistant.tariff.DynamicTariff": "dynamische prijzen"
+  "assistant.tariff.DynamicTariff": "dynamische prijzen",
+  "assistant.today": "vandaag",
+  "assistant.tomorrow": "morgen"
 }

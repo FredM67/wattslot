@@ -25,6 +25,7 @@ from wattslot.assistant.tools import (
     WEATHER,
     _max_hour,
     _next_action,
+    _when,
     clock,
     day_of,
     find_name,
@@ -125,7 +126,35 @@ def test_day_plan_and_week(api: TestClient) -> None:
     week = _call(api, "get_week")
     assert len(week["days"]) >= 2 and all(d["production_kwh"] > 0 for d in week["days"])
     assert week["today"]  # le premier jour est aujourd'hui, à le dire
+    assert {d["when"] for d in week["days"]} & {"aujourd'hui", "demain"} or all(
+        d["when"][0].isupper() for d in week["days"]
+    )
     assert all(d.get("weather", "journée").startswith("journée") for d in week["days"])
+
+
+def test_days_of_the_week_in_words() -> None:
+    today = date(2026, 11, 4)
+    assert _when(today, today, "fr") == "aujourd'hui"
+    assert _when(date(2026, 11, 5), today, "en") == "tomorrow"
+    assert _when(date(2026, 11, 6), today, "fr") == "Vendredi 6 Novembre 2026"
+
+
+def test_the_battery_of_the_home_in_words(api: TestClient) -> None:
+    """« 5.12 », « floor_percent: 12.0 » se lisaient « 12.0 % d'espace »."""
+    battery = HomeModel(
+        devices=[
+            HomeDevice(
+                key="battery",
+                kind=DeviceKind.BATTERY,
+                name="Batterie",
+                capacity_kwh=5.12,
+                sensors=[HomeSensor(entity_id="sensor.soc", role=Role.STATE_OF_CHARGE)],
+            )
+        ]
+    )
+    home_model.save(api.app.state.graph, battery)  # type: ignore[attr-defined]
+    (found,) = _call(api, "get_home")["batteries"]
+    assert found["capacity"] == "5,12\u00a0kWh" and found["never_below"].endswith("\u00a0%")
 
 
 def test_the_plan_text_leaves_the_figures_to_the_summary() -> None:

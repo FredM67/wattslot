@@ -19,6 +19,7 @@ from wattslot.aggregation import HOUR
 from wattslot.configuration import Behavior
 from wattslot.detection import Role
 from wattslot.home_assistant import ConnectionState
+from wattslot.languages import number
 from wattslot.planning.explain import catalog
 from wattslot.planning.journal import cycle_appliances
 from wattslot.planning.tariff_sources import needs_states, tariff_context
@@ -301,17 +302,30 @@ async def _not_planned(state: Any, device: str, day: date, planned: list[str]) -
     return found
 
 
+def _when(day: date, today: date, lang: str) -> str:
+    """« aujourd'hui », « demain », sinon la date en toutes lettres."""
+    texts = catalog(lang)
+    if day == today:
+        return texts["assistant.today"]
+    if day == today + timedelta(days=1):
+        return texts["assistant.tomorrow"]
+    return long_date(day, lang)
+
+
 async def get_week(state: Any) -> dict[str, Any]:
     lang = language(state)
     view = await week_view_of(state, lang)
     if view is None:
         return NO_PLAN
+    today = datetime.now(state.raw.zone).date()
     return {
         # Le premier jour est aujourd'hui : sans le dire, « le reste de la semaine » le comptait.
-        "today": datetime.now(state.raw.zone).date().isoformat(),
+        "today": today.isoformat(),
         "days": [
             {
                 "day": d.day.isoformat(),
+                # En mots aussi : avec la seule date, un modèle comptait encore aujourd'hui.
+                "when": _when(d.day, today, lang),
                 "production_kwh": round(d.production_kwh, 1),
                 # La qualité en toutes lettres seulement : « sunny » était recopié tel quel.
                 **({"weather": WEATHER[lang][d.weather]} if d.weather else {}),
@@ -527,11 +541,17 @@ def get_home(state: Any) -> dict[str, Any]:
         setting = settings.get(d.key)
         behavior = setting.behavior if setting else Behavior.UNCONTROLLED
         if behavior is Behavior.STORAGE:
+            # Valeurs écrites dans la langue réglée (« 5,12 kWh ») et réserve nommée pour ce
+            # qu'elle est : « floor_percent: 12.0 » se lisait « 12.0 % d'espace ».
             groups["batteries"].append(
                 {
                     "name": d.name,
-                    **({"capacity_kwh": d.capacity_kwh} if d.capacity_kwh else {}),
-                    "floor_percent": battery.floor_percent,
+                    **(
+                        {"capacity": f"{number(d.capacity_kwh, lang, 2)}\u00a0kWh"}
+                        if d.capacity_kwh
+                        else {}
+                    ),
+                    "never_below": f"{number(battery.floor_percent, lang, 0)}\u00a0%",
                 }
             )
         elif behavior in MANAGED:

@@ -50,5 +50,7 @@
   "assistant.tariff.SingleTariff": "prix unique",
   "assistant.tariff.TimeOfUseTariff": "heures pleines et heures creuses",
   "assistant.tariff.DayColorTariff": "prix selon la couleur du jour",
-  "assistant.tariff.DynamicTariff": "prix dynamiques"
+  "assistant.tariff.DynamicTariff": "prix dynamiques",
+  "assistant.today": "aujourd'hui",
+  "assistant.tomorrow": "demain"
 }

@@ -50,5 +50,7 @@
   "assistant.tariff.SingleTariff": "prezzo unico",
   "assistant.tariff.TimeOfUseTariff": "fasce di punta e fasce economiche",
   "assistant.tariff.DayColorTariff": "prezzi secondo il colore del giorno",
-  "assistant.tariff.DynamicTariff": "prezzi dinamici"
+  "assistant.tariff.DynamicTariff": "prezzi dinamici",
+  "assistant.today": "oggi",
+  "assistant.tomorrow": "domani"
 }

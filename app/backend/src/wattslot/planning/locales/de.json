@@ -50,5 +50,7 @@
   "assistant.tariff.SingleTariff": "Einheitspreis",
   "assistant.tariff.TimeOfUseTariff": "Hoch- und Niedertarifzeiten",
   "assistant.tariff.DayColorTariff": "Preise nach Tagesfarbe",
-  "assistant.tariff.DynamicTariff": "dynamische Preise"
+  "assistant.tariff.DynamicTariff": "dynamische Preise",
+  "assistant.today": "heute",
+  "assistant.tomorrow": "morgen"
 }
