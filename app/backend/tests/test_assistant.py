@@ -228,7 +228,8 @@ def test_explain_device_finds_it_without_accents_or_dashes(api: TestClient) -> N
     others = [o["device"] for o in found["other_appliances_this_day"]]
     assert "Lave-linge" in others and "Sèche-linge" not in others
     unknown = _call(api, "explain_device", {"device": "voiture"})
-    assert unknown["error"] == "unknown_device" and "Lave-linge" in unknown["planned_devices"]
+    assert unknown["error"] == "unknown_device" and "ask the user" in unknown["hint"]
+    assert "Lave-linge" in [o["device"] for o in unknown["appliances_this_day"]]
 
 
 def test_energy_forecast_home_status_and_problems(api: TestClient) -> None:
@@ -546,7 +547,12 @@ def test_an_appliance_of_the_home_not_planned_this_day(tmp_path: Path) -> None:
     assert washer["reason"].startswith("Pas prévu ce jour-là")
     assert washer["hint"].startswith("Il peut être demandé") and "_" not in washer["hint"]
     assert "scheduled" not in dishwasher and "next_planned" not in dishwasher
-    assert unknown["error"] == "unknown_device" and "Chauffe-eau" in unknown["planned_devices"]
+    # Appareil inconnu (« l'autre appareil ») : ceux qui tournent ce jour-là, sans la batterie.
+    assert unknown["error"] == "unknown_device"
+    assert {o["device"] for o in unknown["appliances_this_day"]} == {
+        "Chauffe-eau",
+        "Piscine (filtration)",
+    }
 
 
 def test_other_days_say_what_today_means_and_the_maximum_is_an_hour_range(api: TestClient) -> None:

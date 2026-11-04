@@ -68,8 +68,9 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     async def get_forecast(day: str = "today") -> dict[str, Any]:
-        """Weather and solar forecast of a day (today, tomorrow or YYYY-MM-DD): hour by hour
-        today and tomorrow; says when the forecast ends."""
+        """Weather and solar forecast of a day, up to about a week ahead (today, tomorrow or
+        YYYY-MM-DD); further: says when the forecast ends. Hour by hour for today and
+        tomorrow."""
         return await tools.get_forecast(state(), day)
 
     @server.tool(annotations=READ_ONLY)

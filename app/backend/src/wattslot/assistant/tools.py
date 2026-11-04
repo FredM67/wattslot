@@ -273,8 +273,13 @@ async def explain_device(state: Any, device: str, day: Day = "today") -> dict[st
     names = [r.device for r in view.timeline.rows] + [e.device for e in view.explanations]
     name = find_name(device, list(dict.fromkeys(names)))
     if name is None:
-        absent = await _not_planned(state, device, view.day, list(dict.fromkeys(names)))
-        if "error" not in absent:
+        absent = await _not_planned(state, device, view.day)
+        if "error" in absent:
+            # Appareil inconnu (« l'autre appareil ») : ceux qui tournent vraiment ce jour-là,
+            # sans la batterie ni les lignes à l'arrêt ; avec toutes les lignes du plan, qwen3
+            # annonçait « la batterie et la filtration » prévues, la filtration étant arrêtée.
+            absent["appliances_this_day"] = _others(view, "", language(state))
+        else:
             absent["other_appliances_this_day"] = _others(view, absent["device"], language(state))
         return absent
     row = next((r for r in view.timeline.rows if r.device == name), None)
@@ -307,14 +312,14 @@ def _others(view: DayView, name: str, lang: str) -> list[dict[str, Any]] | str:
     return others or catalog(lang)["assistant.no_other"]
 
 
-async def _not_planned(state: Any, device: str, day: date, planned: list[str]) -> dict[str, Any]:
+async def _not_planned(state: Any, device: str, day: date) -> dict[str, Any]:
     """Équipement absent du plan de ce jour : s'il est dans la maison, il n'est simplement pas
     prévu (rien de demandé ni d'échu) ; on dit quand l'horizon le place et s'il peut être
     demandé. Sinon, équipement inconnu."""
     home = home_model.load(state.graph)
     name = find_name(device, [d.name for d in home.devices])
     if name is None:
-        return {"error": "unknown_device", "planned_devices": planned}
+        return {"error": "unknown_device", "hint": "Unknown appliance: ask the user which one."}
     # Textes dans la langue réglée et sans nom d'outil : les modèles les recopient tels quels.
     lang = language(state)
     texts = catalog(lang)
