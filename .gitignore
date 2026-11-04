@@ -250,3 +250,6 @@ app/backend/data/
 
 # Captures de problèmes sans plan (planning/capture.py) : données d'une maison réelle
 no-plan-*.pickle
+
+# Banc d'essai de l'assistant : les réponses citent les équipements de la maison
+dev/tools/.bench/

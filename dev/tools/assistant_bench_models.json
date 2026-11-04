@@ -1,0 +1,22 @@
+{
+  "_comment": "Profils du banc d'essai de l'assistant : mêmes réglages que les modèles d'Open WebUI (étiquette Ollama, réflexion, options). « think » absent : réglage par défaut du modèle.",
+  "qwen3": {
+    "model": "qwen3:4b-instruct-2507-q4_K_M",
+    "options": {"num_ctx": 16384}
+  },
+  "gemma4": {
+    "model": "gemma4:e2b-it-qat",
+    "think": true,
+    "options": {"num_ctx": 16384}
+  },
+  "lfm3": {
+    "model": "lfm3:latest",
+    "think": true,
+    "options": {"num_ctx": 16384, "temperature": 0.1, "top_k": 50, "repeat_penalty": 1.1}
+  },
+  "lfm3-rapide": {
+    "model": "lfm3:latest",
+    "think": false,
+    "options": {"num_ctx": 16384, "temperature": 0.1, "top_k": 50, "repeat_penalty": 1.1}
+  }
+}

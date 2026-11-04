@@ -86,6 +86,19 @@ python -m tools.demo serve --data /tmp/wattslot-demo/fr --port 8100
 
 (avec `PYTHONPATH` sur `app/backend/src` et `dev/`, ce que fait `tools.screenshots`). L'heure du serveur est figée, pas celle du navigateur.
 
+## Banc d'essai de l'assistant
+
+`dev/tools/assistant_bench.py` pose les 18 questions de la suite de test de l'assistant à des modèles locaux d'Ollama, plusieurs fois chacune, avec les outils du serveur MCP d'une installation de WattSlot (sans Open WebUI). Il ne dépend que de la bibliothèque standard de Python.
+
+```bash
+python dev/tools/assistant_bench.py --wattslot http://192.0.2.10:8100 --ollama http://192.0.2.20:11434 --models qwen3,lfm3 --runs 3
+```
+
+- **Profils** (`dev/tools/assistant_bench_models.json`) : étiquette Ollama, réflexion et options de chaque modèle, comme ses réglages dans Open WebUI.
+- **Options** : `--questions 6,12,17` (scénarios à jouer ; `13-15` pour la conversation sur trois tours), `--runs`, `--lang`, `--prompt-file` (au lieu du prompt conseillé de l'application).
+- **Aucune demande déposée** : une confirmation de `request_device` n'est pas transmise (sauf `--allow-requests`) et compte comme un défaut grave.
+- **Rapport** dans `dev/tools/.bench/` (ignoré par git, les réponses citent les équipements de la maison) : un résumé Markdown, une pastille par essai et la durée médiane, puis chaque réponse avec ses outils ; le détail en JSON Lines. Les pastilles ne relèvent que les défauts visibles (aucun outil, nom technique, marqueur, date brute, réponse vide) : le fond se juge à la lecture.
+
 ## Repartir de zéro
 
 ```bash
