@@ -54,5 +54,6 @@
   "assistant.today": "heute",
   "assistant.tomorrow": "morgen",
   "assistant.yesterday": "gestern",
-  "assistant.week_end": "Keine Prognose über den {date} hinaus."
+  "assistant.week_end": "Keine Prognose über den {date} hinaus.",
+  "assistant.no_other": "An diesem Tag ist kein anderes Gerät geplant."
 }

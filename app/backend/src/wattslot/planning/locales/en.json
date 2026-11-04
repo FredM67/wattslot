@@ -54,5 +54,6 @@
   "assistant.today": "today",
   "assistant.tomorrow": "tomorrow",
   "assistant.yesterday": "yesterday",
-  "assistant.week_end": "No forecast beyond {date}."
+  "assistant.week_end": "No forecast beyond {date}.",
+  "assistant.no_other": "No other appliance planned that day."
 }

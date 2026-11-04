@@ -264,7 +264,10 @@ async def explain_device(state: Any, device: str, day: Day = "today") -> dict[st
     names = [r.device for r in view.timeline.rows] + [e.device for e in view.explanations]
     name = find_name(device, list(dict.fromkeys(names)))
     if name is None:
-        return await _not_planned(state, device, view.day, list(dict.fromkeys(names)))
+        absent = await _not_planned(state, device, view.day, list(dict.fromkeys(names)))
+        if "error" not in absent:
+            absent["other_appliances_this_day"] = _others(view, absent["device"], language(state))
+        return absent
     row = next((r for r in view.timeline.rows if r.device == name), None)
     status = next((s for s in view.timeline.statuses if s.device == name), None)
     explanation = next((e.text for e in view.explanations if e.device == name), None)
@@ -277,7 +280,19 @@ async def explain_device(state: Any, device: str, day: Day = "today") -> dict[st
         found["status"] = _status_text(status.status, status.shift_min, language(state))
     if explanation:
         found["why"] = explanation
+    found["other_appliances_this_day"] = _others(view, name, language(state))
     return found
+
+
+def _others(view: DayView, name: str, lang: str) -> list[dict[str, Any]] | str:
+    """Autres appareils qui tournent ce jour-là, pour « Et l'autre appareil ? » ; aucun : une
+    phrase (un modèle prenait le premier équipement de la maison pour « l'autre appareil »)."""
+    others = [
+        {"device": r.device, "planned": _bars(r.planned)}
+        for r in view.timeline.rows
+        if r.device != name and r.kind != "battery" and r.planned
+    ]
+    return others or catalog(lang)["assistant.no_other"]
 
 
 async def _not_planned(state: Any, device: str, day: date, planned: list[str]) -> dict[str, Any]:

@@ -54,5 +54,6 @@
   "assistant.today": "aujourd'hui",
   "assistant.tomorrow": "demain",
   "assistant.yesterday": "hier",
-  "assistant.week_end": "Pas de prévision au-delà du {date}."
+  "assistant.week_end": "Pas de prévision au-delà du {date}.",
+  "assistant.no_other": "Aucun autre appareil prévu ce jour-là."
 }

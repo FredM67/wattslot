@@ -195,6 +195,9 @@ def test_explain_device_finds_it_without_accents_or_dashes(api: TestClient) -> N
     assert found["device"] == "Sèche-linge"
     assert found["planned"][0]["start"] == "12:10"
     assert found["status"].endswith(".") and "_" not in found["status"]  # une phrase, pas un code
+    # « Et l'autre appareil ? » : les autres appareils du jour, ici le lave-linge.
+    others = [o["device"] for o in found["other_appliances_this_day"]]
+    assert "Lave-linge" in others and "Sèche-linge" not in others
     unknown = _call(api, "explain_device", {"device": "voiture"})
     assert unknown["error"] == "unknown_device" and "Lave-linge" in unknown["planned_devices"]
 
@@ -433,6 +436,10 @@ def test_an_appliance_of_the_home_not_planned_this_day(tmp_path: Path) -> None:
         unknown = _call(client, "explain_device", {"device": "voiture"})
 
     assert washer["device"] == "Lave-linge" and washer["scheduled"] is False
+    assert {o["device"] for o in washer["other_appliances_this_day"]} == {
+        "Chauffe-eau",
+        "Piscine (filtration)",
+    }
     assert washer["next_planned"] == {"day": "2026-10-15", "start": "11:00", "end": "12:10"}
     # Dans la langue réglée et sans nom d'outil : les modèles recopiaient « request_device ».
     assert washer["reason"].startswith("Pas prévu ce jour-là")
