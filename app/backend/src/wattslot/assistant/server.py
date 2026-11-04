@@ -52,7 +52,7 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     async def get_week() -> dict[str, Any]:
-        """The next days: production, weather, planned appliances."""
+        """The next days, about a week (no forecast beyond): production, weather, appliances."""
         return await tools.get_week(state())
 
     @server.tool(annotations=READ_ONLY)
@@ -72,7 +72,7 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     def get_home() -> dict[str, Any]:
-        """Appliances of the home and how they are planned, tariff, objective."""
+        """Appliances of the home (not today's plan), battery, solar, tariff, objective."""
         return tools.get_home(state())
 
     @server.tool(annotations=READ_ONLY)

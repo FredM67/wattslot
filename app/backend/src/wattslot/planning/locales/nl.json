@@ -52,5 +52,7 @@
   "assistant.tariff.DayColorTariff": "prijzen volgens de kleur van de dag",
   "assistant.tariff.DynamicTariff": "dynamische prijzen",
   "assistant.today": "vandaag",
-  "assistant.tomorrow": "morgen"
+  "assistant.tomorrow": "morgen",
+  "assistant.yesterday": "gisteren",
+  "assistant.week_end": "Geen prognose na {date}."
 }

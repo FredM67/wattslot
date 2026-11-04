@@ -52,5 +52,7 @@
   "assistant.tariff.DayColorTariff": "prix selon la couleur du jour",
   "assistant.tariff.DynamicTariff": "prix dynamiques",
   "assistant.today": "aujourd'hui",
-  "assistant.tomorrow": "demain"
+  "assistant.tomorrow": "demain",
+  "assistant.yesterday": "hier",
+  "assistant.week_end": "Pas de prévision au-delà du {date}."
 }

@@ -57,11 +57,19 @@ NOW_ROLES = {
     Role.POWER_PRODUCED: "W",
     Role.POWER_CONSUMED: "W",
 }
-# Équipements de la maison par rôle dans le plan : ceux que le calcul place (planned), ceux
-# qu'il pourrait placer mais qui sont exclus du calcul (not_planned), le reste.
+# Équipements de la maison par rôle dans le plan : ceux que le calcul place quand il y a lieu,
+# ceux qu'il pourrait placer mais qui sont exclus du calcul, le reste. « planned » se lisait
+# « prévus aujourd'hui » (un modèle a annoncé le lave-vaisselle comme « l'autre appareil prévu »).
 MANAGED = {Behavior.CYCLE, Behavior.ENERGY_BY_DEADLINE, Behavior.RUNTIME}
 HOME_GROUP_OF = {Behavior.PRODUCTION: "solar", Behavior.GRID: "grid"}
-HOME_GROUPS = ("planned", "not_planned", "batteries", "solar", "grid", "other_loads")
+HOME_GROUPS = (
+    "placed_by_wattslot",
+    "excluded_from_planning",
+    "batteries",
+    "solar",
+    "grid",
+    "other_loads",
+)
 OBJECTIVE_TEXT = {"autonomy": "import"}  # objectif → texte du catalogue (« objective.… »)
 FRESH = timedelta(hours=2)  # au-delà, un relevé ne dit plus « en ce moment »
 RUNNING_W = 20  # en dessous, un appareil est en veille
@@ -125,8 +133,9 @@ def _summary(view: DayView, lang: str) -> dict[str, Any]:
         "grid_export_kwh": round(s.grid_export_kwh, 2),
     }
     if view.battery_capacity_kwh is not None:
+        # « fin de journée » dans le nom : lu « la batterie est à 10 % » comme le niveau actuel.
         found.update(
-            battery_end_percent=round(s.soc_end_percent),
+            battery_end_of_day_percent=round(s.soc_end_percent),
             battery_max_percent=round(s.soc_max_percent),
             battery_max_at=_max_hour(s.soc_max_hour),
         )
@@ -186,14 +195,20 @@ def _pattern(template: str) -> re.Pattern[str]:
     return re.compile(".+?".join(re.escape(p) for p in parts))
 
 
-def plan_text(text: str | None, lang: str) -> str | None:
-    """Texte de recommandation sans les lignes de chiffres que le résumé donne déjà."""
+def plan_text(text: str | None, lang: str, day: Day = "today") -> str | None:
+    """Texte de recommandation sans les lignes de chiffres que le résumé donne déjà. Rédigé comme
+    la notification du jour, il dit « aujourd'hui » : pour un autre jour, le mot du jour voulu
+    (une note en anglais à côté ne suffisait pas, « aujourd'hui » était repris pour demain)."""
     if text is None:
         return None
     texts = catalog(lang)
     patterns = [_pattern(texts[f"recommendation.{key}"]) for key in FIGURE_LINES]
     lines = [line for line in text.split("\n") if not any(p.match(line) for p in patterns)]
-    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+    found = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+    if day != "today":
+        today = re.escape(texts["assistant.today"])
+        found = re.sub(rf"\b{today}\b", texts[f"assistant.{day}"], found)
+    return found
 
 
 async def _next_planned(state: Any, after: date) -> dict[str, Any] | None:
@@ -219,7 +234,7 @@ async def get_day_plan(state: Any, day: Day = "today") -> dict[str, Any]:
     found: dict[str, Any] = {
         "day": view.day.isoformat(),
         "computed_at": view.computed_at.isoformat(timespec="minutes") if view.computed_at else None,
-        "recommendation": plan_text(view.recommendation, lang),
+        "recommendation": plan_text(view.recommendation, lang, day),
         "summary": _summary(view, lang),
         "warnings": [n.text for n in view.notices],
     }
@@ -230,9 +245,6 @@ async def get_day_plan(state: Any, day: Day = "today") -> dict[str, Any]:
             later = await _next_planned(state, view.day)
             if later is not None:
                 found["next_planned"] = later
-    if day != "today":
-        # Texte rédigé comme la notification du jour : « aujourd'hui » y désigne ce jour-là.
-        found["note"] = f'In the recommendation text, "today" means {view.day.isoformat()}.'
     return found
 
 
@@ -330,7 +342,7 @@ async def get_week(state: Any) -> dict[str, Any]:
                 # La qualité en toutes lettres seulement : « sunny » était recopié tel quel.
                 **({"weather": WEATHER[lang][d.weather]} if d.weather else {}),
                 **(
-                    {"battery_end_percent": round(d.soc_end_percent)}
+                    {"battery_end_of_day_percent": round(d.soc_end_percent)}
                     if d.soc_end_percent is not None
                     else {}
                 ),
@@ -347,6 +359,17 @@ async def get_week(state: Any) -> dict[str, Any]:
             }
             for d in view.days
         ],
+        # Les prévisions s'arrêtent au dernier jour : sans le dire, « dans 10 jours » donnait
+        # les sept jours connus, ou « seulement aujourd'hui et demain ».
+        **(
+            {
+                "forecast_end": catalog(lang)["assistant.week_end"].format(
+                    date=long_date(view.days[-1].day, lang)
+                )
+            }
+            if view.days
+            else {}
+        ),
         "warnings": [n.text for n in view.notices],
     }
 
@@ -555,7 +578,8 @@ def get_home(state: Any) -> dict[str, Any]:
                 }
             )
         elif behavior in MANAGED:
-            groups["planned" if setting and setting.planned else "not_planned"].append(d.name)
+            key = "placed_by_wattslot" if setting and setting.planned else "excluded_from_planning"
+            groups[key].append(d.name)
         else:
             groups[HOME_GROUP_OF.get(behavior, "other_loads")].append(d.name)
     return {
