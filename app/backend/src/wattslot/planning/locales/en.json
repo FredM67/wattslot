@@ -38,5 +38,7 @@
   "reason.chosen": "Start chosen by you.",
   "reason.full_charge_first": "The battery's full charge, due today, comes first: the solar surplus goes to it.",
   "assistant.request": "Run “{device}” at the best time: shall I file the request?",
-  "assistant.request_by": "Run “{device}” at the best time, by {date} at the latest: shall I file the request?"
+  "assistant.request_by": "Run “{device}” at the best time, by {date} at the latest: shall I file the request?",
+  "assistant.not_planned": "Not planned that day: nothing was requested and nothing is due.",
+  "assistant.can_request": "It can be requested: it will then run at the best time."
 }

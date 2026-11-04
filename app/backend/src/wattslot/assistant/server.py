@@ -40,8 +40,8 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     async def get_day_plan(day: tools.Day = "today") -> dict[str, Any]:
-        """Plan of a day: appliances and times, the cost of the whole day (summary.cost), the
-        next appliance to start (next_appliance, none left if null), battery, warnings."""
+        """Plan of a day: appliances and times, the cost of the whole day, the next appliance
+        to start today (none left if empty), battery, warnings."""
         return await tools.get_day_plan(state(), day)
 
     @server.tool(annotations=READ_ONLY)
@@ -88,17 +88,17 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     def get_requests() -> dict[str, Any]:
-        """Requests filed in My requests: open ones, then recently closed. An open one with
-        launched_on has already run. Not the next appliance: get_day_plan."""
+        """Requests filed in My requests: open ones, then recently closed. An open one with a
+        launch date has already run. Not the next appliance: get_day_plan."""
         return tools.get_requests(state())
 
     @server.tool(annotations=REQUEST)
     def request_device(
         device: str, latest_date: str | None = None, confirm_code: str | None = None
     ) -> dict[str, Any]:
-        """Run an appliance at the best time, by latest_date (YYYY-MM-DD) if given. Without
-        confirm_code nothing is filed: ask the user the question returned, then call again
-        with its confirm_code only if they agree."""
+        """Run an appliance at the best time, by latest_date (today, tomorrow or YYYY-MM-DD).
+        Call first without confirm_code: nothing is filed, ask the user the question returned;
+        call again with its confirm_code if they agree."""
         return tools.request_device(state(), device, latest_date, confirm_code)
 
     return server

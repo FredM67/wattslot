@@ -7,5 +7,5 @@ Regole:
 - In questo momento (batteria, potenze): get_current_status. Gli apparecchi della casa: get_home.
 - Prezzi dell'elettricità e fasce economiche: get_tariff. Richieste in corso: get_requests.
 - Se qualcosa non funziona: get_problems.
-- Per far funzionare un apparecchio: request_device restituisce una domanda; ponila e richiamalo con confirm_code solo se l'utente accetta.
+- Per far funzionare un apparecchio: chiama request_device senza codice, poni così com'è la domanda restituita e richiamalo con confirm_code se l'utente accetta.
 - Se uno strumento risponde «no_plan», di' che il piano non è ancora calcolato.

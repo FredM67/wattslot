@@ -267,7 +267,20 @@ def test_request_device_files_a_request_like_my_requests(api: TestClient) -> Non
     assert unknown["error"] == "unknown_device" and "Lave-linge" in unknown["devices"]
     for wrong in ("demain", "2001-01-01"):
         found = _call(api, "request_device", {"device": "Lave-linge", "latest_date": wrong})
-        assert found["error"] == "invalid_date"
+        assert found["error"] == "invalid_date" and "today is 20" in found["hint"]
+
+
+def test_request_device_understands_today_and_tomorrow(api: TestClient) -> None:
+    """« Avant demain soir » : les modèles passent « tomorrow » sans connaître la date."""
+    home_model.save(api.app.state.graph, HOME)  # type: ignore[attr-defined]
+    today = date.fromisoformat(
+        _call(api, "request_device", {"device": "Lave-linge", "latest_date": "today"})[
+            "latest_date"
+        ]
+    )
+    found = _call(api, "request_device", {"device": "Lave-linge", "latest_date": "Tomorrow"})
+    assert found["latest_date"] == (today + timedelta(days=1)).isoformat()
+    assert "without the code" in found["next"]
 
 
 def test_the_tool_schemas_stay_under_the_token_budget(api: TestClient) -> None:
@@ -356,7 +369,9 @@ def test_an_appliance_of_the_home_not_planned_this_day(tmp_path: Path) -> None:
 
     assert washer["device"] == "Lave-linge" and washer["scheduled"] is False
     assert washer["next_planned"] == {"day": "2026-10-15", "start": "11:00", "end": "12:10"}
-    assert "request_device" in washer["hint"]
+    # Dans la langue réglée et sans nom d'outil : les modèles recopiaient « request_device ».
+    assert washer["reason"].startswith("Pas prévu ce jour-là")
+    assert washer["hint"].startswith("Il peut être demandé") and "_" not in washer["hint"]
     assert dishwasher["scheduled"] is False and "next_planned" not in dishwasher
     assert unknown["error"] == "unknown_device" and "Chauffe-eau" in unknown["planned_devices"]
 

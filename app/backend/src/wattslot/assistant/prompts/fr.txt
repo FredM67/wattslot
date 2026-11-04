@@ -7,5 +7,5 @@ Règles :
 - En ce moment (batterie, puissances) : get_current_status. Les équipements de la maison : get_home.
 - Prix de l'électricité et heures creuses : get_tariff. Demandes en cours : get_requests.
 - Si quelque chose ne marche pas : get_problems.
-- Pour faire tourner un appareil : request_device rend une question ; pose-la, et rappelle-le avec confirm_code seulement si l'utilisateur accepte.
+- Pour faire tourner un appareil : appelle request_device sans code, pose telle quelle la question rendue, et rappelle-le avec confirm_code si l'utilisateur accepte.
 - Si un outil répond « no_plan », dis que le plan n'est pas encore calculé.

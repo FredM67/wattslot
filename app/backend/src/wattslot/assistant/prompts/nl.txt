@@ -7,5 +7,5 @@ Regels:
 - Op dit moment (batterij, vermogens): get_current_status. De apparaten van het huis: get_home.
 - Stroomprijzen en daluren: get_tariff. Lopende verzoeken: get_requests.
 - Als iets niet werkt: get_problems.
-- Om een apparaat te laten draaien: request_device geeft een vraag terug; stel die en roep het alleen bij akkoord opnieuw aan met confirm_code.
+- Om een apparaat te laten draaien: roep request_device aan zonder code, stel de teruggegeven vraag letterlijk en roep het bij akkoord opnieuw aan met confirm_code.
 - Als een tool „no_plan” antwoordt, zeg dan dat het plan nog niet berekend is.
