@@ -40,5 +40,15 @@
   "assistant.request": "Faire tourner « {device} » au meilleur moment : je dépose la demande ?",
   "assistant.request_by": "Faire tourner « {device} » au meilleur moment, au plus tard le {date} : je dépose la demande ?",
   "assistant.not_planned": "Pas prévu ce jour-là : rien n'a été demandé ni n'arrive à échéance.",
-  "assistant.can_request": "Il peut être demandé : il tournera alors au meilleur moment."
+  "assistant.can_request": "Il peut être demandé : il tournera alors au meilleur moment.",
+  "assistant.no_next": "Plus aucun appareil à lancer aujourd'hui.",
+  "assistant.status.on_time": "Lancé à l'heure prévue.",
+  "assistant.status.late": "Lancé {minutes} min plus tard que prévu.",
+  "assistant.status.early": "Lancé {minutes} min plus tôt que prévu.",
+  "assistant.status.no_cycle": "Aucun cycle constaté à l'heure prévue.",
+  "assistant.status.planned": "Prévu, pas encore lancé.",
+  "assistant.tariff.SingleTariff": "prix unique",
+  "assistant.tariff.TimeOfUseTariff": "heures pleines et heures creuses",
+  "assistant.tariff.DayColorTariff": "prix selon la couleur du jour",
+  "assistant.tariff.DynamicTariff": "prix dynamiques"
 }

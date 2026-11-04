@@ -40,5 +40,15 @@
   "assistant.request": "Run “{device}” at the best time: shall I file the request?",
   "assistant.request_by": "Run “{device}” at the best time, by {date} at the latest: shall I file the request?",
   "assistant.not_planned": "Not planned that day: nothing was requested and nothing is due.",
-  "assistant.can_request": "It can be requested: it will then run at the best time."
+  "assistant.can_request": "It can be requested: it will then run at the best time.",
+  "assistant.no_next": "No appliance left to start today.",
+  "assistant.status.on_time": "Started at the planned time.",
+  "assistant.status.late": "Started {minutes} min later than planned.",
+  "assistant.status.early": "Started {minutes} min earlier than planned.",
+  "assistant.status.no_cycle": "No cycle seen at the planned time.",
+  "assistant.status.planned": "Planned, not started yet.",
+  "assistant.tariff.SingleTariff": "single price",
+  "assistant.tariff.TimeOfUseTariff": "peak and off-peak hours",
+  "assistant.tariff.DayColorTariff": "prices by color of the day",
+  "assistant.tariff.DynamicTariff": "dynamic prices"
 }

@@ -40,5 +40,15 @@
   "assistant.request": "Far funzionare «{device}» nel momento migliore: inoltro la richiesta?",
   "assistant.request_by": "Far funzionare «{device}» nel momento migliore, entro il {date}: inoltro la richiesta?",
   "assistant.not_planned": "Non previsto quel giorno: non è stato richiesto nulla e nulla è in scadenza.",
-  "assistant.can_request": "Si può richiedere: funzionerà allora nel momento migliore."
+  "assistant.can_request": "Si può richiedere: funzionerà allora nel momento migliore.",
+  "assistant.no_next": "Oggi non resta nessun apparecchio da avviare.",
+  "assistant.status.on_time": "Avviato all'ora prevista.",
+  "assistant.status.late": "Avviato {minutes} min più tardi del previsto.",
+  "assistant.status.early": "Avviato {minutes} min prima del previsto.",
+  "assistant.status.no_cycle": "Nessun ciclo rilevato all'ora prevista.",
+  "assistant.status.planned": "Previsto, non ancora avviato.",
+  "assistant.tariff.SingleTariff": "prezzo unico",
+  "assistant.tariff.TimeOfUseTariff": "fasce di punta e fasce economiche",
+  "assistant.tariff.DayColorTariff": "prezzi secondo il colore del giorno",
+  "assistant.tariff.DynamicTariff": "prezzi dinamici"
 }

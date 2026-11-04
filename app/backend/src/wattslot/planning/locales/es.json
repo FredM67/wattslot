@@ -40,5 +40,15 @@
   "assistant.request": "Poner «{device}» en el mejor momento: ¿presento la solicitud?",
   "assistant.request_by": "Poner «{device}» en el mejor momento, a más tardar el {date}: ¿presento la solicitud?",
   "assistant.not_planned": "No previsto ese día: no se ha solicitado nada ni vence nada.",
-  "assistant.can_request": "Se puede solicitar: funcionará entonces en el mejor momento."
+  "assistant.can_request": "Se puede solicitar: funcionará entonces en el mejor momento.",
+  "assistant.no_next": "Hoy no queda ningún aparato por poner en marcha.",
+  "assistant.status.on_time": "Arrancó a la hora prevista.",
+  "assistant.status.late": "Arrancó {minutes} min más tarde de lo previsto.",
+  "assistant.status.early": "Arrancó {minutes} min antes de lo previsto.",
+  "assistant.status.no_cycle": "Ningún ciclo detectado a la hora prevista.",
+  "assistant.status.planned": "Previsto, aún no ha arrancado.",
+  "assistant.tariff.SingleTariff": "precio único",
+  "assistant.tariff.TimeOfUseTariff": "horas punta y horas valle",
+  "assistant.tariff.DayColorTariff": "precios según el color del día",
+  "assistant.tariff.DynamicTariff": "precios dinámicos"
 }

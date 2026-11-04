@@ -8,6 +8,7 @@ les notifications : le LLM n'a rien à recalculer. Tous lisent seulement, sauf
 """
 
 import hashlib
+import re
 import unicodedata
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, date, datetime, time, timedelta
@@ -15,6 +16,7 @@ from typing import Any, Literal
 
 from wattslot import configuration, currency, home_model, notifications, user_requests
 from wattslot.aggregation import HOUR
+from wattslot.configuration import Behavior
 from wattslot.detection import Role
 from wattslot.home_assistant import ConnectionState
 from wattslot.planning.explain import catalog
@@ -54,6 +56,14 @@ NOW_ROLES = {
     Role.POWER_PRODUCED: "W",
     Role.POWER_CONSUMED: "W",
 }
+# Équipements de la maison par rôle dans le plan : ceux que le calcul place (planned), ceux
+# qu'il pourrait placer mais qui sont exclus du calcul (not_planned), le reste.
+MANAGED = {Behavior.CYCLE, Behavior.ENERGY_BY_DEADLINE, Behavior.RUNTIME}
+HOME_GROUP_OF = {Behavior.PRODUCTION: "solar", Behavior.GRID: "grid"}
+HOME_GROUPS = ("planned", "not_planned", "batteries", "solar", "grid", "other_loads")
+OBJECTIVE_TEXT = {"autonomy": "import"}  # objectif → texte du catalogue (« objective.… »)
+FRESH = timedelta(hours=2)  # au-delà, un relevé ne dit plus « en ce moment »
+RUNNING_W = 20  # en dessous, un appareil est en veille
 
 
 def language(state: Any) -> str:
@@ -162,6 +172,44 @@ def _next_action(view: DayView, lang: str) -> dict[str, Any] | None:
     return found
 
 
+# Lignes du texte de recommandation reprises par le résumé : le bilan du plan au moment du calcul
+# (« Bilan prévu : 0,99 € ») et la batterie en kWh, avec l'heure du maximum du plan. À côté du
+# coût de la journée entière et de la batterie en pourcentage du résumé, deux chiffres pour une
+# même question : les modèles prenaient l'un pour l'autre.
+FIGURE_LINES = ("battery", "balance")
+
+
+def _pattern(template: str) -> re.Pattern[str]:
+    """Début d'une ligne écrite d'après ``template`` (« {x} » : n'importe quel texte)."""
+    parts = re.split(r"\{[a-z_]+\}", template)
+    return re.compile(".+?".join(re.escape(p) for p in parts))
+
+
+def plan_text(text: str | None, lang: str) -> str | None:
+    """Texte de recommandation sans les lignes de chiffres que le résumé donne déjà."""
+    if text is None:
+        return None
+    texts = catalog(lang)
+    patterns = [_pattern(texts[f"recommendation.{key}"]) for key in FIGURE_LINES]
+    lines = [line for line in text.split("\n") if not any(p.match(line) for p in patterns)]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
+async def _next_planned(state: Any, after: date) -> dict[str, Any] | None:
+    """Premier appareil que l'horizon place après ``after``."""
+    week = await week_view_of(state, language(state))
+    for other in week.days if week else []:
+        if other.day > after and other.devices:
+            first = min(other.devices, key=lambda p: p.start_min)
+            return {
+                "day": other.day.isoformat(),
+                "device": first.device,
+                "start": clock(first.start_min / 60),
+                "end": clock(first.end_min / 60),
+            }
+    return None
+
+
 async def get_day_plan(state: Any, day: Day = "today") -> dict[str, Any]:
     lang = language(state)
     view = await day_view_of(state, day, lang)
@@ -170,16 +218,30 @@ async def get_day_plan(state: Any, day: Day = "today") -> dict[str, Any]:
     found: dict[str, Any] = {
         "day": view.day.isoformat(),
         "computed_at": view.computed_at.isoformat(timespec="minutes") if view.computed_at else None,
-        "recommendation": view.recommendation,
+        "recommendation": plan_text(view.recommendation, lang),
         "summary": _summary(view, lang),
         "warnings": [n.text for n in view.notices],
     }
     if day == "today":
-        found["next_appliance"] = _next_action(view, lang)
+        # Une phrase plutôt qu'une valeur vide : les modèles recopiaient le champ « null ».
+        found["next_appliance"] = _next_action(view, lang) or catalog(lang)["assistant.no_next"]
+        if view.next_action is None:
+            later = await _next_planned(state, view.day)
+            if later is not None:
+                found["next_planned"] = later
     if day != "today":
         # Texte rédigé comme la notification du jour : « aujourd'hui » y désigne ce jour-là.
         found["note"] = f'In the recommendation text, "today" means {view.day.isoformat()}.'
     return found
+
+
+def _status_text(status: str, shift_min: int | None, lang: str) -> str:
+    """État du cycle en une phrase (« on_time » était recopié tel quel)."""
+    texts = catalog(lang)
+    if status == "shifted" and shift_min:
+        key = "late" if shift_min > 0 else "early"
+        return texts[f"assistant.status.{key}"].format(minutes=abs(shift_min))
+    return texts[f"assistant.status.{'on_time' if status == 'shifted' else status}"]
 
 
 async def explain_device(state: Any, device: str, day: Day = "today") -> dict[str, Any]:
@@ -199,9 +261,7 @@ async def explain_device(state: Any, device: str, day: Day = "today") -> dict[st
         if row.actual:
             found["actual"] = _bars(row.actual)
     if status is not None:
-        found["status"] = status.status
-        if status.shift_min is not None:
-            found["shift_min"] = status.shift_min
+        found["status"] = _status_text(status.status, status.shift_min, language(state))
     if explanation:
         found["why"] = explanation
     return found
@@ -242,15 +302,19 @@ async def _not_planned(state: Any, device: str, day: date, planned: list[str]) -
 
 
 async def get_week(state: Any) -> dict[str, Any]:
-    view = await week_view_of(state, language(state))
+    lang = language(state)
+    view = await week_view_of(state, lang)
     if view is None:
         return NO_PLAN
     return {
+        # Le premier jour est aujourd'hui : sans le dire, « le reste de la semaine » le comptait.
+        "today": datetime.now(state.raw.zone).date().isoformat(),
         "days": [
             {
                 "day": d.day.isoformat(),
                 "production_kwh": round(d.production_kwh, 1),
-                "weather": d.weather,
+                # La qualité en toutes lettres seulement : « sunny » était recopié tel quel.
+                **({"weather": WEATHER[lang][d.weather]} if d.weather else {}),
                 **(
                     {"battery_end_percent": round(d.soc_end_percent)}
                     if d.soc_end_percent is not None
@@ -282,24 +346,44 @@ async def get_current_status(state: Any) -> dict[str, Any]:
         for device in home_model.load(state.graph).devices
         for sensor in device.sensors
     }
-    readings = [
-        {
-            "device": names.get(e.entity_id, e.entity_id),
-            "measure": e.role.value,
-            "value": round(e.last_value, 1),
-            "unit": NOW_ROLES[e.role],
-            "at": e.last_time.isoformat(timespec="minutes") if e.last_time else None,
-        }
+    now = datetime.now(UTC)
+    # HA n'envoie un relevé qu'au changement : un niveau de charge stable reste valable, une
+    # puissance figée depuis longtemps vient d'un capteur muet (panneaux la nuit…).
+    fresh = [
+        e
         for e in ingestor.status().entities
-        if e.role in NOW_ROLES and e.last_value is not None
+        if e.role in NOW_ROLES
+        and e.last_value is not None
+        and e.last_time is not None
+        and (e.role is Role.STATE_OF_CHARGE or now - e.last_time <= FRESH)
     ]
-    found: dict[str, Any] = {"readings": readings}
+    found: dict[str, Any] = {}
     # Phrase « En ce moment » de Planning (lot 6b.3) : qui alimente la maison, au dernier quart
     # d'heure clos.
     view = await day_view_of(state, "today", language(state))
     if view is not None and view.now is not None and view.now.sentence:
         found["now"] = view.now.sentence
         found["off_peak"] = view.now.off_peak
+    # Un résumé plutôt que tous les relevés (~2 000 tokens, heures en UTC) : le niveau de la
+    # batterie s'y cherchait sous le nom de l'appareil.
+    charge = [e.last_value for e in fresh if e.role is Role.STATE_OF_CHARGE]
+    if charge:
+        found["battery_percent"] = round(sum(charge) / len(charge))
+    solar = [e.last_value for e in fresh if e.role is Role.POWER_PRODUCED]
+    if solar:
+        found["solar_power_w"] = round(sum(solar))
+    running = sorted(
+        (
+            (names.get(e.entity_id, e.entity_id), round(e.last_value))
+            for e in fresh
+            if e.role is Role.POWER_CONSUMED and e.last_value >= RUNNING_W
+        ),
+        key=lambda r: -r[1],
+    )
+    found["appliances_on"] = [{"device": d, "power_w": w} for d, w in running]
+    if fresh:
+        latest = max(e.last_time for e in fresh if e.last_time is not None)
+        found["measured_at"] = latest.astimezone(state.raw.zone).strftime("%H:%M")
     return found
 
 
@@ -416,9 +500,8 @@ async def get_forecast(state: Any, day: Literal["today", "tomorrow"] = "today") 
     return {
         "day": view.day.isoformat(),
         "production_kwh": round(view.weather.production_kwh, 1),
-        "weather": view.weather.quality,
         **(
-            {"weather_label": WEATHER[language(state)][view.weather.quality]}
+            {"weather": WEATHER[language(state)][view.weather.quality]}
             if view.weather.quality
             else {}
         ),
@@ -434,29 +517,32 @@ def get_home(state: Any) -> dict[str, Any]:
     settings = {d.key: d for d in configuration.effective(home, saved).devices}
     battery = configuration.battery_of(saved)
     tariff = configuration.tariff_of(saved)
-    found: dict[str, Any] = {
-        "devices": [
-            {
-                "name": d.name,
-                "kind": d.kind.value,
-                **(
-                    {
-                        "behavior": settings[d.key].behavior.value,
-                        "scheduled": settings[d.key].planned,
-                    }
-                    if d.key in settings
-                    else {}
-                ),
-                **({"capacity_kwh": d.capacity_kwh} if d.capacity_kwh else {}),
-            }
-            for d in home.devices
-        ],
-        "tariff": tariff.kind.value,
-        "objective": objective_of(state, saved).value,
+    lang = language(state)
+    texts = catalog(lang)
+    preset = objective_of(state, saved).value
+    # Groupes par rôle dans le plan plutôt que les codes de la configuration : « scheduled »
+    # valait vrai pour tout (même le réseau), d'où « tous les équipements sont planifiés ».
+    groups: dict[str, list[Any]] = {key: [] for key in HOME_GROUPS}
+    for d in home.devices:
+        setting = settings.get(d.key)
+        behavior = setting.behavior if setting else Behavior.UNCONTROLLED
+        if behavior is Behavior.STORAGE:
+            groups["batteries"].append(
+                {
+                    "name": d.name,
+                    **({"capacity_kwh": d.capacity_kwh} if d.capacity_kwh else {}),
+                    "floor_percent": battery.floor_percent,
+                }
+            )
+        elif behavior in MANAGED:
+            groups["planned" if setting and setting.planned else "not_planned"].append(d.name)
+        else:
+            groups[HOME_GROUP_OF.get(behavior, "other_loads")].append(d.name)
+    return {
+        **{key: values for key, values in groups.items() if values},
+        "tariff": texts[f"assistant.tariff.{tariff.kind.value}"],
+        "objective": texts[f"objective.{OBJECTIVE_TEXT.get(preset, preset)}"],
     }
-    if any(d.capacity_kwh for d in home.devices):
-        found["battery"] = {"floor_percent": battery.floor_percent}
-    return found
 
 
 async def get_problems(problems: Callable[[], Awaitable[Sequence[Any]]]) -> dict[str, Any]:
@@ -603,7 +689,7 @@ async def get_tariff(state: Any, day: Literal["today", "tomorrow"] = "today") ->
     context = await _tariff_context(state, tariff, today)
     found: dict[str, Any] = {
         "day": wanted.isoformat(),
-        "tariff": tariff.kind.value,
+        "tariff": catalog(lang)[f"assistant.tariff.{tariff.kind.value}"],
         "prices": _price_ranges(tariff.hourly(wanted, context), lang),
         "off_peak": [
             {"start": clock(start), "end": clock(end)}

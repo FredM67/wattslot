@@ -5,7 +5,7 @@ Core l'appelle hors de l'ingress ; dépôt d'une demande ; budget de tokens ; pr
 import asyncio
 import json
 from collections.abc import Iterator
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -31,6 +31,7 @@ from wattslot.assistant.tools import (
     get_current_status,
     get_tariff,
     measured_energy,
+    plan_text,
 )
 from wattslot.detection import DeviceKind, Role
 from wattslot.home_assistant import ConnectionState
@@ -123,13 +124,45 @@ def test_day_plan_and_week(api: TestClient) -> None:
 
     week = _call(api, "get_week")
     assert len(week["days"]) >= 2 and all(d["production_kwh"] > 0 for d in week["days"])
+    assert week["today"]  # le premier jour est aujourd'hui, à le dire
+    assert all(d.get("weather", "journée").startswith("journée") for d in week["days"])
+
+
+def test_the_plan_text_leaves_the_figures_to_the_summary() -> None:
+    """« Bilan prévu : 0,99 € » (le plan au moment du calcul) à côté du coût de la journée
+    entière : les modèles prenaient l'un pour l'autre ; la batterie en kWh, de même."""
+    text = "\n".join(
+        [
+            "Objectif : le coût le plus bas.",
+            "",
+            "Équipements à lancer aujourd'hui :",
+            "- Lave-linge : 11h-12h10 (0,90 kWh).",
+            "",
+            "Batterie : 0,63 kWh au départ, maximum prévu 2,19 kWh vers 11 h, 0,61 kWh en fin de "
+            "journée. Recharge au soleil.",
+            "Filtration : à l'arrêt toute la journée.",
+            "",
+            "Bilan prévu : 0,99 € et 2,1 kWh soutirés. Autoconsommation : 99 %.",
+        ]
+    )
+    found = plan_text(text, "fr")
+    assert found is not None and "Lave-linge : 11h-12h10" in found
+    assert "Filtration" in found and "Bilan" not in found and "Batterie :" not in found
+    assert "\n\n\n" not in found and plan_text(None, "fr") is None
+
+
+def test_no_appliance_left_today_is_a_sentence(api: TestClient) -> None:
+    """Plus rien aujourd'hui : une phrase plutôt que « null », et le prochain jour prévu."""
+    plan = _call(api, "get_day_plan", {"day": "today"})
+    if isinstance(plan["next_appliance"], str):
+        assert plan["next_appliance"] == "Plus aucun appareil à lancer aujourd'hui."
 
 
 def test_explain_device_finds_it_without_accents_or_dashes(api: TestClient) -> None:
     found = _call(api, "explain_device", {"device": "seche linge"})
     assert found["device"] == "Sèche-linge"
     assert found["planned"][0]["start"] == "12:10"
-    assert found["status"] in {"planned", "no_cycle", "on_time", "shifted"}
+    assert found["status"].endswith(".") and "_" not in found["status"]  # une phrase, pas un code
     unknown = _call(api, "explain_device", {"device": "voiture"})
     assert unknown["error"] == "unknown_device" and "Lave-linge" in unknown["planned_devices"]
 
@@ -147,7 +180,7 @@ def test_energy_forecast_home_status_and_problems(api: TestClient) -> None:
     assert forecast["production_kwh"] > 0 and "12:00" in forecast["hourly_kwh"]
 
     home = _call(api, "get_home")
-    assert home["objective"] == "cost" and "devices" in home and home["tariff"]
+    assert home["objective"] == "le coût le plus bas" and home["tariff"] == "prix unique"
 
     assert _call(api, "get_current_status")["error"] == "not_connected"  # pas de HA en test
     problems = _call(api, "get_problems")["problems"]
@@ -432,12 +465,12 @@ def test_tariff_of_the_home_without_home_assistant(
     """« Quand sont les heures creuses aujourd'hui ? » : plages de prix réunies, heures
     creuses ; sans tarif configuré, un prix unique et aucune heure creuse."""
     single = _call(api, "get_tariff")
-    assert single["tariff"] == "SingleTariff" and single["off_peak"] == []
+    assert single["tariff"] == "prix unique" and single["off_peak"] == []
     assert single["prices"] == [{"start": "00:00", "end": "00:00", "price": "0,250\u00a0€/kWh"}]
 
     monkeypatch.setattr("wattslot.configuration.tariff_of", lambda _: V1)
     found = _call(api, "get_tariff", {"day": "tomorrow"})
-    assert found["tariff"] == "TimeOfUseTariff"
+    assert found["tariff"] == "heures pleines et heures creuses"
     assert found["off_peak"] == [
         {"start": "00:00", "end": "06:00"},
         {"start": "22:00", "end": "00:00"},
@@ -530,7 +563,34 @@ def test_current_status_says_what_powers_the_home(
 
     monkeypatch.setattr("wattslot.assistant.tools.day_view_of", today)
     app = api.app.state  # type: ignore[attr-defined]
-    ingestor = SimpleNamespace(status=lambda: SimpleNamespace(entities=[]))
-    state = SimpleNamespace(graph=app.graph, database=app.database, ingestor=ingestor)
+    moment = datetime.now(UTC)
+
+    def entity(name: str, role: Role, value: float, age_h: float = 0.1) -> Any:
+        return SimpleNamespace(
+            entity_id=f"sensor.{name}",
+            role=role,
+            last_value=value,
+            last_time=moment - timedelta(hours=age_h),
+        )
+
+    entities = [
+        entity("soc", Role.STATE_OF_CHARGE, 41.6, age_h=9),  # stable : toujours valable
+        entity("pv1", Role.POWER_PRODUCED, 800.4),
+        entity("pv2", Role.POWER_PRODUCED, 200),
+        entity("pv_night", Role.POWER_PRODUCED, 999, age_h=5),  # figé : écarté
+        entity("oven", Role.POWER_CONSUMED, 2100),
+        entity("tv", Role.POWER_CONSUMED, 4),  # veille
+    ]
+    ingestor = SimpleNamespace(status=lambda: SimpleNamespace(entities=entities))
+    state = SimpleNamespace(
+        graph=app.graph,
+        database=app.database,
+        ingestor=ingestor,
+        raw=SimpleNamespace(zone=ZoneInfo("Europe/Paris")),
+    )
     found = asyncio.run(get_current_status(state))
-    assert found == {"readings": [], "now": "La batterie alimente la maison", "off_peak": False}
+    assert found["now"] == "La batterie alimente la maison" and found["off_peak"] is False
+    assert found["battery_percent"] == 42 and found["solar_power_w"] == 1000
+    assert found["appliances_on"] == [{"device": "sensor.oven", "power_w": 2100}]
+    local = (moment - timedelta(hours=0.1)).astimezone(ZoneInfo("Europe/Paris"))
+    assert found["measured_at"] == local.strftime("%H:%M")  # heure locale

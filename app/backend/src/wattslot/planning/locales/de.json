@@ -40,5 +40,15 @@
   "assistant.request": "„{device}“ zur besten Zeit laufen lassen: Soll ich den Auftrag stellen?",
   "assistant.request_by": "„{device}“ zur besten Zeit laufen lassen, spätestens am {date}: Soll ich den Auftrag stellen?",
   "assistant.not_planned": "An diesem Tag nicht geplant: Es wurde nichts beantragt und nichts ist fällig.",
-  "assistant.can_request": "Es kann beantragt werden: Es läuft dann zur besten Zeit."
+  "assistant.can_request": "Es kann beantragt werden: Es läuft dann zur besten Zeit.",
+  "assistant.no_next": "Heute ist kein Gerät mehr zu starten.",
+  "assistant.status.on_time": "Zur geplanten Zeit gestartet.",
+  "assistant.status.late": "{minutes} Min. später als geplant gestartet.",
+  "assistant.status.early": "{minutes} Min. früher als geplant gestartet.",
+  "assistant.status.no_cycle": "Zur geplanten Zeit kein Zyklus erkannt.",
+  "assistant.status.planned": "Geplant, noch nicht gestartet.",
+  "assistant.tariff.SingleTariff": "Einheitspreis",
+  "assistant.tariff.TimeOfUseTariff": "Hoch- und Niedertarifzeiten",
+  "assistant.tariff.DayColorTariff": "Preise nach Tagesfarbe",
+  "assistant.tariff.DynamicTariff": "dynamische Preise"
 }
