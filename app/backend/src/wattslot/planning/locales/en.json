@@ -36,5 +36,7 @@
   "recommendation.warnings": "Warnings:",
   "recommendation.appliance": "- {device}: {start}-{end} ({energy} kWh).",
   "reason.chosen": "Start chosen by you.",
-  "reason.full_charge_first": "The battery's full charge, due today, comes first: the solar surplus goes to it."
+  "reason.full_charge_first": "The battery's full charge, due today, comes first: the solar surplus goes to it.",
+  "assistant.request": "Run “{device}” at the best time: shall I file the request?",
+  "assistant.request_by": "Run “{device}” at the best time, by {date} at the latest: shall I file the request?"
 }

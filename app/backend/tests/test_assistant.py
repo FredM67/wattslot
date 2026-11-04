@@ -106,7 +106,7 @@ def test_the_client_lists_ten_read_only_tools_and_one_action(api: TestClient) ->
     assert all(tools[n].annotations.read_only_hint for n in READ_TOOLS)
     action = tools["request_device"].annotations
     assert action is not None and not action.read_only_hint and not action.destructive_hint
-    assert all(t.description and len(t.description) < 90 for t in tools.values())  # courtes
+    assert all(t.description and len(t.description) < 240 for t in tools.values())  # courtes
 
 
 def test_day_plan_and_week(api: TestClient) -> None:
@@ -214,11 +214,51 @@ HOME = HomeModel(
 )
 
 
+def _request(api: TestClient, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Demande confirmée : la question d'abord, puis le même appel avec son code."""
+    asked = _call(api, "request_device", arguments)
+    return _call(api, "request_device", {**arguments, "confirm_code": asked["confirm_code"]})
+
+
+def test_request_device_asks_first_then_files_with_the_code(api: TestClient) -> None:
+    """« Fais tourner le lave-linge avant demain soir » : rien n'est déposé sans le code rendu
+    avec la question ; les modèles essayés déposaient la demande sans rien demander."""
+    home_model.save(api.app.state.graph, HOME)  # type: ignore[attr-defined]
+    asked = _call(api, "request_device", {"device": "lave linge", "latest_date": "2099-01-31"})
+    assert asked["filed"] is False and asked["device"] == "Lave-linge"
+    assert asked["question"].startswith("Faire tourner « Lave-linge »")  # langue réglée
+    assert "2099" in asked["question"] and asked["confirm_code"]
+    assert api.get("/api/requests").json() == []
+
+    for wrong in ("000000", "tout de suite"):
+        refused = _call(
+            api,
+            "request_device",
+            {"device": "Lave-linge", "latest_date": "2099-01-31", "confirm_code": wrong},
+        )
+        assert refused["error"] == "invalid_confirm_code"
+    # Le code vaut pour cette date limite seulement.
+    other = _call(
+        api, "request_device", {"device": "Lave-linge", "confirm_code": asked["confirm_code"]}
+    )
+    assert other["error"] == "invalid_confirm_code"
+    assert api.get("/api/requests").json() == []
+
+    code = asked["confirm_code"]
+    filed = _call(
+        api,
+        "request_device",
+        {"device": "Lave-linge", "latest_date": "2099-01-31", "confirm_code": code},
+    )
+    assert filed["filed"] is True and filed["status"] == "open"
+    assert filed["latest_date"] == "2099-01-31"
+
+
 def test_request_device_files_a_request_like_my_requests(api: TestClient) -> None:
     home_model.save(api.app.state.graph, HOME)  # type: ignore[attr-defined]
-    asked = _call(api, "request_device", {"device": "lave linge"})
+    asked = _request(api, {"device": "lave linge"})
     assert asked["device"] == "Lave-linge" and asked["latest_date"] is None
-    later = _call(api, "request_device", {"device": "Lave-linge", "latest_date": "2099-01-31"})
+    later = _request(api, {"device": "Lave-linge", "latest_date": "2099-01-31"})
     assert later["latest_date"] == "2099-01-31"
     opened = [r for r in api.get("/api/requests").json() if r["status"] == "open"]
     assert len(opened) == 1 and opened[0]["latest"] == "2099-01-31"  # une seule, redatée
@@ -365,7 +405,7 @@ def test_requests_list_like_my_requests(api: TestClient) -> None:
     """« Quelles sont mes demandes en cours ? »"""
     assert _call(api, "get_requests") == {"requests": []}
     home_model.save(api.app.state.graph, HOME)  # type: ignore[attr-defined]
-    _call(api, "request_device", {"device": "lave vaisselle", "latest_date": "2099-01-31"})
+    _request(api, {"device": "lave vaisselle", "latest_date": "2099-01-31"})
     (found,) = _call(api, "get_requests")["requests"]
     assert found["device"] == "Lave-vaisselle" and found["status"] == "open"
     assert found["latest_date"] == "2099-01-31" and "launched_on" not in found

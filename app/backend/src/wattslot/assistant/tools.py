@@ -7,6 +7,7 @@ les notifications : le LLM n'a rien à recalculer. Tous lisent seulement, sauf
 écrits dans la devise de la maison (``currency.amount``).
 """
 
+import hashlib
 import unicodedata
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, date, datetime, time, timedelta
@@ -16,8 +17,10 @@ from wattslot import configuration, currency, home_model, notifications, user_re
 from wattslot.aggregation import HOUR
 from wattslot.detection import Role
 from wattslot.home_assistant import ConnectionState
+from wattslot.planning.explain import catalog
 from wattslot.planning.journal import cycle_appliances
 from wattslot.planning.tariff_sources import needs_states, tariff_context
+from wattslot.planning.warning_texts import long_date
 from wattslot.tariff import NO_CONTEXT, Tariff, TariffContext, TariffKind, off_peak_ranges
 from wattslot.views.day import DayView
 from wattslot.views.routes import day_view_of, objective_of, week_view_of
@@ -468,30 +471,68 @@ async def get_problems(problems: Callable[[], Awaitable[Sequence[Any]]]) -> dict
     }
 
 
-def request_device(state: Any, device: str, latest_date: str | None = None) -> dict[str, Any]:
+def confirm_code(key: str, latest: date | None, today: date) -> str:
+    """Code à rendre pour confirmer une demande : propre à l'équipement, à la date limite et au
+    jour, il ne se devine pas ; un modèle doit donc d'abord rendre la question à l'utilisateur."""
+    seed = f"{key}|{latest.isoformat() if latest else ''}|{today.isoformat()}"
+    return hashlib.sha256(seed.encode()).hexdigest()[:6]
+
+
+def request_device(
+    state: Any, device: str, latest_date: str | None = None, code: str | None = None
+) -> dict[str, Any]:
     """Demande pour un équipement (lot 4.5), au plus tard ``latest_date`` (AAAA-MM-JJ) ; une
-    demande déjà ouverte pour lui change seulement de date. Le calcul suivant la place."""
+    demande déjà ouverte pour lui change seulement de date. Le calcul suivant la place.
+
+    En deux temps : sans code, rien n'est déposé, l'outil rend la question à poser et le code ;
+    la demande n'est déposée qu'avec ce code, donc après l'accord de l'utilisateur. Les deux
+    modèles essayés déposaient la demande sans rien demander malgré la règle du prompt."""
     home = home_model.load(state.graph)
     requestable = cycle_appliances(home, configuration.load(state.graph))
     names = [a.name for a in requestable]
     name = find_name(device, names)
     if name is None:
         return {"error": "unknown_device", "devices": names}
+    today = datetime.now(state.raw.zone).date()
     latest = None
     if latest_date:
         try:
             latest = date.fromisoformat(latest_date)
         except ValueError:
             return {"error": "invalid_date", "hint": "Use YYYY-MM-DD."}
-        if latest < datetime.now(state.raw.zone).date():
+        if latest < today:
             return {"error": "invalid_date", "hint": "The date is in the past."}
     key = next(a.key for a in requestable if a.name == name)
+    expected = confirm_code(key, latest, today)
+    if code is None:
+        lang = language(state)
+        texts = catalog(lang)
+        question = (
+            texts["assistant.request_by"].format(device=name, date=long_date(latest, lang))
+            if latest
+            else texts["assistant.request"].format(device=name)
+        )
+        return {
+            "device": name,
+            "latest_date": latest.isoformat() if latest else None,
+            "filed": False,
+            "question": question,
+            "confirm_code": expected,
+            "next": "Nothing filed yet. Ask the user this question. Only if they agree, call "
+            "request_device again with the same device and latest_date and this confirm_code.",
+        }
+    if code.strip() != expected:
+        return {
+            "error": "invalid_confirm_code",
+            "hint": "Call request_device without confirm_code to get the question and the code.",
+        }
     found = user_requests.ask(state.database, key, latest, datetime.now(UTC))
     return {
         "device": name,
         "latest_date": found.latest.isoformat() if found.latest else None,
+        "filed": True,
         "status": found.status.value,
-        "note": "Placed at the next computation of the plan, at the best time.",
+        "note": "Filed. The next computation of the plan places it at the best time.",
     }
 
 
