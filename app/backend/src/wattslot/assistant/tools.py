@@ -356,14 +356,21 @@ def _moment(moment: datetime, state: Any, lang: str) -> str:
     return f"{_when(local.date(), today_of(state), lang)} {local:%H:%M}"
 
 
+def _forecast_end(last: date, lang: str) -> str:
+    """« Pas de prévision au-delà du Mardi 10 Novembre 2026. »"""
+    return catalog(lang)["assistant.week_end"].format(date=long_date(last, lang))
+
+
 async def get_week(state: Any) -> dict[str, Any]:
     lang = language(state)
     view = await week_view_of(state, lang)
     if view is None:
         return NO_PLAN
     today = today_of(state)
+    # À partir de demain : avec aujourd'hui en tête, « le reste de la semaine » le comptait encore
+    # (aujourd'hui est dans le plan du jour).
+    days = [d for d in view.days if d.day > today]
     return {
-        # Le premier jour est aujourd'hui : sans le dire, « le reste de la semaine » le comptait.
         "today": long_date(today, lang),
         "days": [
             {
@@ -389,19 +396,11 @@ async def get_week(state: Any) -> dict[str, Any]:
                 ],
                 "warnings": [n.text for n in d.notices],
             }
-            for d in view.days
+            for d in days
         ],
         # Les prévisions s'arrêtent au dernier jour : sans le dire, « dans 10 jours » donnait
         # les sept jours connus, ou « seulement aujourd'hui et demain ».
-        **(
-            {
-                "forecast_end": catalog(lang)["assistant.week_end"].format(
-                    date=long_date(view.days[-1].day, lang)
-                )
-            }
-            if view.days
-            else {}
-        ),
+        **({"forecast_end": _forecast_end(view.days[-1].day, lang)} if view.days else {}),
         "warnings": [n.text for n in view.notices],
     }
 
@@ -564,7 +563,46 @@ async def get_energy(state: Any, day: str = "today") -> dict[str, Any]:
     return result
 
 
-async def get_forecast(state: Any, day: Literal["today", "tomorrow"] = "today") -> dict[str, Any]:
+async def get_forecast(state: Any, day: str = "today") -> dict[str, Any]:
+    """Prévision d'un jour : heure par heure aujourd'hui et demain, la journée ensuite, et la fin
+    des prévisions au-delà. Avec « today » ou « tomorrow » seulement, qwen3 répondait « je ne
+    vois que deux jours » à « dans 10 jours », sans chercher plus loin."""
+    lang = language(state)
+    today = today_of(state)
+    relative = {"today": today, "tomorrow": today + timedelta(days=1)}
+    try:
+        wanted = relative.get(day.strip().lower()) or date.fromisoformat(day.strip())
+    except ValueError:
+        return {
+            "error": "invalid_date",
+            "hint": f"Use today, tomorrow or YYYY-MM-DD; today is {today.isoformat()}.",
+        }
+    if wanted < today:
+        return {"error": "invalid_date", "hint": "The day is past: see get_energy."}
+    if wanted > today + timedelta(days=1):
+        return await _later_forecast(state, wanted, today, lang)
+    return await _hourly_forecast(state, "today" if wanted == today else "tomorrow")
+
+
+async def _later_forecast(state: Any, wanted: date, today: date, lang: str) -> dict[str, Any]:
+    """Après demain : la journée telle que l'horizon la prévoit, ou la fin des prévisions."""
+    week = await week_view_of(state, lang)
+    if week is None or not week.days:
+        return NO_PLAN
+    found = next((d for d in week.days if d.day == wanted), None)
+    if found is None:
+        return {
+            "day": _when(wanted, today, lang),
+            "forecast_end": _forecast_end(week.days[-1].day, lang),
+        }
+    return {
+        "day": _when(wanted, today, lang),
+        "production_kwh": round(found.production_kwh, 1),
+        **({"weather": WEATHER[lang][found.weather]} if found.weather else {}),
+    }
+
+
+async def _hourly_forecast(state: Any, day: Day) -> dict[str, Any]:
     view = await day_view_of(state, day, language(state))
     if view is None:
         return NO_PLAN
@@ -645,14 +683,71 @@ def get_home(state: Any) -> dict[str, Any]:
     }
 
 
-async def get_problems(problems: Callable[[], Awaitable[Sequence[Any]]]) -> dict[str, Any]:
+def _fill(template: str, params: dict[str, str]) -> str:
+    """« {device} : … » complété ; un paramètre absent laisse un vide, comme l'interface."""
+    return re.sub(r"\{(\w+)\}", lambda m: params.get(m.group(1), ""), template)
+
+
+def problem_text(code: str, params: dict[str, str], lang: str) -> str:
+    """Phrase d'un problème, comme l'écran Diagnostic (``ProblemsSection``), avec les textes de
+    l'interface copiés dans les catalogues du serveur (``problem.*``)."""
+    texts = catalog(lang)
+    params = dict(params)
+    issue = params.pop("issue", "")
+    if code == "configuration_issue":
+        return _fill(texts.get(f"problem.configuration_issue.{issue}", issue), params)
+    if code == "energy_dashboard_issue":
+        detail = _fill(texts.get(f"problem.issue.{issue}", issue), params)
+        return _fill(texts["problem.code.energy_dashboard_issue"], {**params, "issue": detail})
+    if code in ("impossible_data", "impossible_data_unknown"):
+        hour = texts["problem.hour"]
+        params.update(
+            day=long_date(params.get("day", ""), lang),
+            hour=_fill(hour, {"hour": params.get("hour", "")}),
+            kwh=number(float(params.get("kwh", 0)), lang, 0),
+            limit=number(float(params.get("limit", 0)), lang, 1),
+        )
+        if code == "impossible_data":
+            params.update(
+                when=long_date(params.get("when", ""), lang),
+                when_hour=_fill(hour, {"hour": params.get("when_hour", "")}),
+                source_kwh=number(float(params.get("source_kwh", 0)), lang, 0),
+                until=long_date(params.get("until", ""), lang),
+            )
+    if "error_code" in params:
+        error = params.pop("error_code")
+        params["error"] = texts.get(
+            f"problem.connection_error.{error}", texts["problem.connection_error.unknown"]
+        )
+    if "role" in params:
+        params["role"] = texts.get(f"problem.role.{params['role']}", params["role"])
+    if "component" in params:
+        params["component"] = texts.get(
+            f"problem.component.{params['component']}", params["component"]
+        )
+    return _fill(texts.get(f"problem.code.{code}", code), params).strip()
+
+
+async def get_problems(
+    state: Any, problems: Callable[[], Awaitable[Sequence[Any]]]
+) -> dict[str, Any]:
+    """Problèmes en phrases, avec leur gravité et le geste à faire, dans la langue réglée : avec
+    les codes et leurs paramètres, un modèle aurait recopié « sensor_silent »."""
     found = await problems()
+    lang = language(state)
+    texts = catalog(lang)
+    if not found:
+        return {"problems": texts["problem.none"]}
     return {
         "problems": [
             {
-                "severity": p.severity.value,
-                "code": p.code,
-                **({"details": p.params} if p.params else {}),
+                "severity": texts[f"problem.severity.{p.severity.value}"],
+                "problem": problem_text(p.code, p.params, lang),
+                **(
+                    {"what_to_do": texts[f"problem.action.{p.code}"]}
+                    if f"problem.action.{p.code}" in texts
+                    else {}
+                ),
             }
             for p in found
         ]

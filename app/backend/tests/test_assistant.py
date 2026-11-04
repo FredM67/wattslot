@@ -35,6 +35,7 @@ from wattslot.assistant.tools import (
     get_tariff,
     measured_energy,
     plan_text,
+    problem_text,
 )
 from wattslot.detection import DeviceKind, Role
 from wattslot.home_assistant import ConnectionState
@@ -115,7 +116,7 @@ def test_the_client_lists_ten_read_only_tools_and_one_action(api: TestClient) ->
     assert all(t.description and len(t.description) < 240 for t in tools.values())  # courtes
 
 
-def test_day_plan_and_week(api: TestClient) -> None:
+def test_day_plan_and_week(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     plan = _call(api, "get_day_plan", {"day": "today"})
     assert plan["day"] == long_date(date(2025, 10, 15), "fr")  # en toutes lettres
     assert "Lave-linge : 11h" in plan["recommendation"]  # en français, la langue réglée
@@ -127,14 +128,29 @@ def test_day_plan_and_week(api: TestClient) -> None:
     assert "co2_kg" not in tomorrow
     assert _call(api, "get_day_plan", {"day": "yesterday"})["error"] == "no_plan"
 
+    # À partir de demain : avec aujourd'hui en tête, « le reste de la semaine » le comptait.
+    _, days = horizon_of(2)
+    first = days[0]["date_cible"]
+    monkeypatch.setattr("wattslot.assistant.tools.today_of", lambda _: first)
     week = _call(api, "get_week")
-    assert len(week["days"]) >= 2 and all(d["production_kwh"] > 0 for d in week["days"])
-    assert week["today"]  # le premier jour est aujourd'hui, à le dire
-    assert week["forecast_end"].startswith("Pas de prévision au-delà du ")
-    assert {d["when"] for d in week["days"]} & {"aujourd'hui", "demain"} or all(
-        d["when"][0].isupper() for d in week["days"]
+    assert week["today"] == long_date(first, "fr")
+    assert [d["when"] for d in week["days"]] == ["demain"]
+    assert week["days"][0]["production_kwh"] > 0
+    assert (
+        week["forecast_end"]
+        == f"Pas de prévision au-delà du {long_date(days[1]['date_cible'], 'fr')}."
     )
     assert all(d.get("weather", "journée").startswith("journée") for d in week["days"])
+
+    # Prévision d'une date : la journée après demain, la fin des prévisions au-delà.
+    monkeypatch.setattr("wattslot.assistant.tools.today_of", lambda _: first - timedelta(days=2))
+    third = _call(api, "get_forecast", {"day": days[1]["date_cible"].isoformat()})
+    assert third["day"] == long_date(days[1]["date_cible"], "fr") and "hourly_kwh" not in third
+    assert third["production_kwh"] > 0
+    far = _call(api, "get_forecast", {"day": (first + timedelta(days=10)).isoformat()})
+    assert "production_kwh" not in far and far["forecast_end"] == week["forecast_end"]
+    assert _call(api, "get_forecast", {"day": "2001-01-01"})["error"] == "invalid_date"
+    assert _call(api, "get_forecast", {"day": "lundi"})["error"] == "invalid_date"
 
 
 def test_days_of_the_week_in_words() -> None:
@@ -237,8 +253,70 @@ def test_energy_forecast_home_status_and_problems(api: TestClient) -> None:
     assert home["objective"] == "le coût le plus bas" and home["tariff"] == "prix unique"
 
     assert _call(api, "get_current_status")["error"] == "not_connected"  # pas de HA en test
+    # En phrases, avec la gravité et le geste à faire : plus de codes à recopier.
     problems = _call(api, "get_problems")["problems"]
-    assert problems and problems[0]["code"] == "ha_not_configured"
+    assert problems[0] == {
+        "severity": "Bloque le plan",
+        "problem": "L'application ne connaît pas l'adresse de Home Assistant.",
+        "what_to_do": "Extension : redémarrez-la. Docker : renseignez l'adresse de Home "
+        "Assistant et un jeton d'accès longue durée.",
+    }
+
+
+def test_problems_read_as_on_the_diagnostic_screen() -> None:
+    assert problem_text(
+        "sensor_silent",
+        {"device": "Lave-linge", "role": "PowerConsumed", "entity": "sensor.washer"},
+        "fr",
+    ) == (
+        "Lave-linge : le capteur « Puissance consommée » (sensor.washer) n'a rien envoyé "
+        "depuis un jour."
+    )
+    assert problem_text("ha_disconnected", {"error_code": "token_refused"}, "en").startswith(
+        "Home Assistant does not respond. Home Assistant refuses"
+    )
+    assert problem_text("internal_error", {"component": "planning", "error": "x"}, "fr") == (
+        "Erreur dans le calcul du plan : x"
+    )
+    assert problem_text(
+        "configuration_issue", {"issue": "duplicate_device", "device": "Lave-linge"}, "fr"
+    ) == ("Lave-linge : réglé deux fois.")
+    assert "18 Octobre 2026" in problem_text(
+        "impossible_data_unknown",
+        {"day": "2026-10-18", "hour": "19", "kwh": "12.4", "limit": "9.0"},
+        "fr",
+    )
+
+
+def test_the_problem_texts_are_those_of_the_interface() -> None:
+    """Copiés des catalogues de l'interface (écran Diagnostic) : ils doivent rester les mêmes."""
+    sections = {
+        ("problems", "code"): "problem.code",
+        ("problems", "action"): "problem.action",
+        ("problems", "severity"): "problem.severity",
+        ("problems", "component"): "problem.component",
+        ("problems", "hour"): "problem.hour",
+        ("problems", "none"): "problem.none",
+        ("role",): "problem.role",
+        ("issue",): "problem.issue",
+        ("configuration", "issue"): "problem.configuration_issue",
+        ("connection_error",): "problem.connection_error",
+    }
+    interface = Path(__file__).parents[2] / "frontend/src/i18n/catalogs"
+    for lang in LANGUAGES:
+        ui = json.loads((interface / f"{lang}.json").read_text(encoding="utf-8"))
+        server = catalog(lang)
+        expected: dict[str, str] = {}
+        for source, prefix in sections.items():
+            value: Any = ui
+            for part in source:
+                value = value[part]
+            if isinstance(value, str):
+                expected[prefix] = value
+            else:
+                expected.update({f"{prefix}.{k}": v for k, v in value.items()})
+        copied = {k: v for k, v in server.items() if k.startswith("problem.")}
+        assert copied == expected, lang
 
 
 def test_mcp_answers_over_http(api: TestClient) -> None:

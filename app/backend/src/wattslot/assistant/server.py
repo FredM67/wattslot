@@ -52,7 +52,8 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     async def get_week() -> dict[str, Any]:
-        """The next days, about a week (no forecast beyond): production, weather, appliances."""
+        """The next days from tomorrow, about a week (no forecast beyond): production, weather,
+        appliances. Today: get_day_plan."""
         return await tools.get_week(state())
 
     @server.tool(annotations=READ_ONLY)
@@ -66,8 +67,9 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
         return await tools.get_energy(state(), day)
 
     @server.tool(annotations=READ_ONLY)
-    async def get_forecast(day: Literal["today", "tomorrow"] = "today") -> dict[str, Any]:
-        """Weather and solar forecast hour by hour, today or tomorrow. Later days: get_week."""
+    async def get_forecast(day: str = "today") -> dict[str, Any]:
+        """Weather and solar forecast of a day (today, tomorrow or YYYY-MM-DD): hour by hour
+        today and tomorrow; says when the forecast ends."""
         return await tools.get_forecast(state(), day)
 
     @server.tool(annotations=READ_ONLY)
@@ -78,7 +80,7 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
     @server.tool(annotations=READ_ONLY)
     async def get_problems() -> dict[str, Any]:
         """What is wrong with the application, most serious first."""
-        return await tools.get_problems(problems)
+        return await tools.get_problems(state(), problems)
 
     @server.tool(annotations=READ_ONLY)
     async def get_tariff(day: Literal["today", "tomorrow"] = "today") -> dict[str, Any]:
