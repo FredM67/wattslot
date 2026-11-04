@@ -55,5 +55,6 @@
   "assistant.tomorrow": "demain",
   "assistant.yesterday": "hier",
   "assistant.week_end": "Pas de prévision au-delà du {date}.",
-  "assistant.no_other": "Aucun autre appareil prévu ce jour-là."
+  "assistant.no_other": "Aucun autre appareil prévu ce jour-là.",
+  "assistant.home_about": "Équipements de la maison, pas le plan du jour : ce qui tourne un jour est dans le plan de ce jour."
 }

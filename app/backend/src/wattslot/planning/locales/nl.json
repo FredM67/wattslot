@@ -55,5 +55,6 @@
   "assistant.tomorrow": "morgen",
   "assistant.yesterday": "gisteren",
   "assistant.week_end": "Geen prognose na {date}.",
-  "assistant.no_other": "Die dag is geen ander apparaat gepland."
+  "assistant.no_other": "Die dag is geen ander apparaat gepland.",
+  "assistant.home_about": "Apparaten van het huis, niet het dagplan: wat op een dag draait, staat in het plan van die dag."
 }

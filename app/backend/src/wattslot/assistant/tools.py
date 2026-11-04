@@ -598,6 +598,8 @@ def get_home(state: Any) -> dict[str, Any]:
         else:
             groups[HOME_GROUP_OF.get(behavior, "other_loads")].append(d.name)
     return {
+        # En tête : à « Et l'autre appareil ? », qwen3 prenait le premier de la liste pour prévu.
+        "about": texts["assistant.home_about"],
         **{key: values for key, values in groups.items() if values},
         "tariff": texts[f"assistant.tariff.{tariff.kind.value}"],
         "objective": texts[f"objective.{OBJECTIVE_TEXT.get(preset, preset)}"],

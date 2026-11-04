@@ -156,6 +156,7 @@ def test_the_battery_of_the_home_in_words(api: TestClient) -> None:
     home_model.save(api.app.state.graph, battery)  # type: ignore[attr-defined]
     home = _call(api, "get_home")
     assert "planned" not in home and "not_planned" not in home  # lus « prévus aujourd'hui »
+    assert home["about"].startswith("Équipements de la maison, pas le plan du jour")
     (found,) = home["batteries"]
     assert found["capacity"] == "5,12\u00a0kWh" and found["never_below"].endswith("\u00a0%")
 
