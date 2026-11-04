@@ -571,6 +571,8 @@ async def get_forecast(state: Any, day: Literal["today", "tomorrow"] = "today") 
     when = _when(view.day, today_of(state), language(state))
     if not view.solar:  # maison sans installation solaire (lot 7.4)
         return {"day": when, "solar_installation": False, "production_kwh": 0}
+    producing = [h for h in view.hours if h.production_kwh]
+    peak = max(producing, key=lambda h: h.production_kwh, default=None)
     return {
         "day": when,
         "production_kwh": round(view.weather.production_kwh, 1),
@@ -579,9 +581,16 @@ async def get_forecast(state: Any, day: Literal["today", "tomorrow"] = "today") 
             if view.weather.quality
             else {}
         ),
-        "hourly_kwh": {
-            f"{h.hour:02d}:00": round(h.production_kwh, 2) for h in view.hours if h.production_kwh
-        },
+        # Le résumé avant le détail : un modèle recopiait les onze heures une à une.
+        **(
+            {
+                "production_hours": f"{clock(producing[0].hour)}-{clock(producing[-1].hour + 1)}",
+                "peak_hour": f"{clock(peak.hour)}-{clock(peak.hour + 1)}",
+            }
+            if peak is not None
+            else {}
+        ),
+        "hourly_kwh": {f"{h.hour:02d}:00": round(h.production_kwh, 2) for h in producing},
     }
 
 
@@ -619,10 +628,18 @@ def get_home(state: Any) -> dict[str, Any]:
             groups[key].append(d.name)
         else:
             groups[HOME_GROUP_OF.get(behavior, "other_loads")].append(d.name)
+    # Les autres charges mesurées en nombre seulement : leur liste, souvent longue, était
+    # recopiée en entier (16 s de réponse) et la batterie oubliée.
+    others = groups.pop("other_loads")
     return {
         # En tête : à « Et l'autre appareil ? », qwen3 prenait le premier de la liste pour prévu.
         "about": texts["assistant.home_about"],
         **{key: values for key, values in groups.items() if values},
+        **(
+            {"other_loads": texts["assistant.other_loads"].format(count=len(others))}
+            if others
+            else {}
+        ),
         "tariff": texts[f"assistant.tariff.{tariff.kind.value}"],
         "objective": texts[f"objective.{OBJECTIVE_TEXT.get(preset, preset)}"],
     }

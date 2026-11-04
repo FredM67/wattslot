@@ -62,5 +62,6 @@
   "assistant.request_status.open": "open",
   "assistant.request_status.done": "uitgevoerd",
   "assistant.request_status.cancelled": "geannuleerd",
-  "assistant.no_open_request": "Geen openstaand verzoek."
+  "assistant.no_open_request": "Geen openstaand verzoek.",
+  "assistant.other_loads": "Andere gemeten apparaten: {count}"
 }

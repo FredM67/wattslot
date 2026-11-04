@@ -62,5 +62,6 @@
   "assistant.request_status.open": "offen",
   "assistant.request_status.done": "erledigt",
   "assistant.request_status.cancelled": "abgebrochen",
-  "assistant.no_open_request": "Keine offene Anfrage."
+  "assistant.no_open_request": "Keine offene Anfrage.",
+  "assistant.other_loads": "Weitere gemessene Geräte: {count}"
 }

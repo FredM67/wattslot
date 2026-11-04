@@ -42,6 +42,7 @@ from wattslot.home_model import HomeDevice, HomeModel, HomeSensor
 from wattslot.ingress import HOME_ASSISTANT_CORE_ADDRESS
 from wattslot.languages import LANGUAGES
 from wattslot.main import create_app
+from wattslot.planning.explain import catalog
 from wattslot.planning.store import PlanStore
 from wattslot.planning.warning_texts import long_date
 from wattslot.runtime import RunMode, Settings
@@ -162,6 +163,14 @@ def test_the_battery_of_the_home_in_words(api: TestClient) -> None:
     assert home["about"].startswith("Équipements de la maison, pas le plan du jour")
     (found,) = home["batteries"]
     assert found["capacity"] == "5,12\u00a0kWh" and found["never_below"].endswith("\u00a0%")
+    assert "other_loads" not in home  # aucune autre charge mesurée
+
+
+def test_the_other_loads_of_the_home_are_counted() -> None:
+    """Liste souvent longue, recopiée en entier : un nombre seulement."""
+    assert catalog("fr")["assistant.other_loads"].format(count=12) == (
+        "Autres appareils mesurés : 12"
+    )
 
 
 def test_the_plan_text_leaves_the_figures_to_the_summary() -> None:
@@ -217,6 +226,12 @@ def test_energy_forecast_home_status_and_problems(api: TestClient) -> None:
 
     forecast = _call(api, "get_forecast", {"day": "tomorrow"})
     assert forecast["production_kwh"] > 0 and "12:00" in forecast["hourly_kwh"]
+    # Le résumé avant le détail : heures de production et heure du maximum.
+    first, last = min(forecast["hourly_kwh"]), max(forecast["hourly_kwh"])
+    assert forecast["production_hours"].startswith(f"{first}-")
+    assert forecast["production_hours"] > f"{first}-{last}"
+    peak = max(forecast["hourly_kwh"], key=forecast["hourly_kwh"].get)
+    assert forecast["peak_hour"].startswith(f"{peak}-")
 
     home = _call(api, "get_home")
     assert home["objective"] == "le coût le plus bas" and home["tariff"] == "prix unique"

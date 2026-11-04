@@ -62,5 +62,6 @@
   "assistant.request_status.open": "en cours",
   "assistant.request_status.done": "faite",
   "assistant.request_status.cancelled": "annulée",
-  "assistant.no_open_request": "Aucune demande en cours."
+  "assistant.no_open_request": "Aucune demande en cours.",
+  "assistant.other_loads": "Autres appareils mesurés : {count}"
 }
