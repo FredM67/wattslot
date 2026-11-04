@@ -25,6 +25,7 @@ from wattslot.assistant.tools import (
     WEATHER,
     _max_hour,
     _next_action,
+    _price_ranges,
     _when,
     clock,
     day_of,
@@ -411,7 +412,7 @@ def test_measured_energy_comes_from_the_aggregates_of_any_day(tmp_path: Path) ->
     found = measured_energy(state, date(2026, 10, 1))
     assert found == {
         "production_kwh": 4.0,
-        "grid_import_kwh": 2.0,
+        "bought_from_grid_kwh": 2.0,
         "consumption_kwh": 6.0,  # produit + acheté
         "devices": {"Lave-linge": 4.0},
     }
@@ -514,10 +515,10 @@ def test_tariff_of_the_home_without_home_assistant(
         {"start": "00:00", "end": "06:00"},
         {"start": "22:00", "end": "00:00"},
     ]
-    assert [p["price"] for p in found["prices"]] == [
-        "0,210\u00a0€/kWh",
-        "0,270\u00a0€/kWh",
-        "0,210\u00a0€/kWh",
+    assert [(p["price"], p["period"]) for p in found["prices"]] == [
+        ("0,210\u00a0€/kWh", "heures creuses"),
+        ("0,270\u00a0€/kWh", "heures pleines"),
+        ("0,210\u00a0€/kWh", "heures creuses"),
     ]
     assert "export_prices" not in found
 
@@ -532,12 +533,12 @@ def test_assistant_tariff_uses_weighted_minute_bands(
     )
     monkeypatch.setattr("wattslot.configuration.tariff_of", lambda _: tariff)
     found = _call(api, "get_tariff")
-    assert found["prices"] == [
-        {"start": "00:00", "end": "01:00", "price": "0,300\u00a0€/kWh"},
-        {"start": "01:00", "end": "02:00", "price": "0,210\u00a0€/kWh"},
-        {"start": "02:00", "end": "05:00", "price": "0,120\u00a0€/kWh"},
-        {"start": "05:00", "end": "06:00", "price": "0,186\u00a0€/kWh"},
-        {"start": "06:00", "end": "00:00", "price": "0,300\u00a0€/kWh"},
+    assert [(p["start"], p["end"], p["price"], p["period"]) for p in found["prices"]] == [
+        ("00:00", "01:00", "0,300\u00a0€/kWh", "heures pleines"),
+        ("01:00", "02:00", "0,210\u00a0€/kWh", "heures creuses"),
+        ("02:00", "05:00", "0,120\u00a0€/kWh", "heures creuses"),
+        ("05:00", "06:00", "0,186\u00a0€/kWh", "heures creuses"),
+        ("06:00", "00:00", "0,300\u00a0€/kWh", "heures pleines"),
     ]
     assert found["off_peak"] == [{"start": "01:00", "end": "06:00"}]
 
@@ -585,7 +586,12 @@ def test_the_color_of_the_day_comes_from_home_assistant(tmp_path: Path) -> None:
         today = asyncio.run(get_tariff(state, "today"))
         tomorrow = asyncio.run(get_tariff(state, "tomorrow"))
     assert today["color"] == "Rouge" and "note" not in today
-    assert today["prices"][0] == {"start": "00:00", "end": "06:00", "price": "0,150\u00a0€/kWh"}
+    assert today["prices"][0] == {
+        "start": "00:00",
+        "end": "06:00",
+        "price": "0,150\u00a0€/kWh",
+        "period": "heures creuses",
+    }
     assert today["off_peak"] == [{"start": "00:00", "end": "06:00"}]
     assert tomorrow["color"] is None and "not announced" in tomorrow["note"]
     graph.flush()
@@ -633,3 +639,10 @@ def test_current_status_says_what_powers_the_home(
     assert found["appliances_on"] == [{"device": "sensor.oven", "power_w": 2100}]
     local = (moment - timedelta(hours=0.1)).astimezone(ZoneInfo("Europe/Paris"))
     assert found["measured_at"] == local.strftime("%H:%M")  # heure locale
+
+
+def test_dynamic_prices_have_no_peak_hours() -> None:
+    """Prix dynamiques : des heures moins chères, pas des heures creuses ; aucune étiquette."""
+    prices = {hour: 0.10 + hour / 100 for hour in range(24)}
+    assert all("period" not in p for p in _price_ranges(prices, "fr"))
+    assert _price_ranges(prices, "fr", periods=True)[-1]["period"] == "heures pleines"

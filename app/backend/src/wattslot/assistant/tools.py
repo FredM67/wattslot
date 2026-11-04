@@ -129,8 +129,9 @@ def _summary(view: DayView, lang: str) -> dict[str, Any]:
     s = view.summary
     found: dict[str, Any] = {
         "production_kwh": round(s.production_kwh, 2),
-        "grid_import_kwh": round(s.grid_import_kwh, 2),
-        "grid_export_kwh": round(s.grid_export_kwh, 2),
+        # « acheté », « revendu » : « import » et « export » se lisaient l'un pour l'autre.
+        "bought_from_grid_kwh": round(s.grid_import_kwh, 2),
+        "sold_to_grid_kwh": round(s.grid_export_kwh, 2),
     }
     if view.battery_capacity_kwh is not None:
         # « fin de journée » dans le nom : lu « la batterie est à 10 % » comme le niveau actuel.
@@ -361,7 +362,7 @@ async def get_week(state: Any) -> dict[str, Any]:
                     if d.soc_end_percent is not None
                     else {}
                 ),
-                "grid_import_kwh": round(d.grid_import_kwh, 2),
+                "bought_from_grid_kwh": round(d.grid_import_kwh, 2),
                 "devices": [
                     {
                         "device": p.device,
@@ -439,11 +440,12 @@ async def get_current_status(state: Any) -> dict[str, Any]:
     return found
 
 
-# Totaux mesurés tirés des compteurs d'énergie de la maison, par rôle.
+# Totaux mesurés tirés des compteurs d'énergie de la maison, par rôle. « acheté », « revendu » :
+# un modèle a lu « grid_import » comme de l'énergie injectée.
 TOTALS = {
     Role.ENERGY_PRODUCED: "production_kwh",
-    Role.ENERGY_IMPORTED: "grid_import_kwh",
-    Role.ENERGY_EXPORTED: "grid_export_kwh",
+    Role.ENERGY_IMPORTED: "bought_from_grid_kwh",
+    Role.ENERGY_EXPORTED: "sold_to_grid_kwh",
     Role.ENERGY_CHARGED: "battery_charge_kwh",
     Role.ENERGY_DISCHARGED: "battery_discharge_kwh",
 }
@@ -494,12 +496,12 @@ def measured_energy(state: Any, day: date) -> dict[str, Any] | None:
     if not totals and not devices:
         return {}
     found: dict[str, Any] = {key: round(value, 2) for key, value in totals.items()}
-    if "production_kwh" in totals and "grid_import_kwh" in totals:
+    if "production_kwh" in totals and "bought_from_grid_kwh" in totals:
         # Bilan de la maison : produit + acheté - injecté + rendu par la batterie - stocké.
         found["consumption_kwh"] = round(
             totals["production_kwh"]
-            + totals["grid_import_kwh"]
-            - totals.get("grid_export_kwh", 0.0)
+            + totals["bought_from_grid_kwh"]
+            - totals.get("sold_to_grid_kwh", 0.0)
             + totals.get("battery_discharge_kwh", 0.0)
             - totals.get("battery_charge_kwh", 0.0),
             2,
@@ -726,16 +728,33 @@ async def _tariff_context(state: Any, tariff: Tariff, today: date) -> TariffCont
     return tariff_context(tariff, states or [], today, state.raw.zone)
 
 
-def _price_ranges(prices: dict[int, float], lang: str) -> list[dict[str, str]]:
-    """Heures consécutives au même prix, réunies : 00:00-06:00, « 0,210 €/kWh »."""
+def _price_ranges(
+    prices: dict[int, float], lang: str, periods: bool = False
+) -> list[dict[str, str]]:
+    """Heures consécutives au même prix, réunies : 00:00-06:00, « 0,210 €/kWh ». ``periods`` :
+    chaque plage dit si elle est en heures creuses (moins chère que l'heure la plus chère, comme
+    ``off_peak_ranges``) ou pleines ; avec les seules plages d'heures creuses à côté, un modèle a
+    appelé « heures creuses » la plage la plus chère."""
     ranges: list[tuple[int, int, float]] = []
     for hour in range(24):
         if ranges and ranges[-1][2] == prices[hour]:
             ranges[-1] = (ranges[-1][0], hour + 1, prices[hour])
         else:
             ranges.append((hour, hour + 1, prices[hour]))
+    texts = catalog(lang)
+    top = max(prices.values())
+    labelled = periods and len(ranges) > 1
     return [
-        {"start": clock(start), "end": clock(end), "price": currency.per_kwh(price, lang)}
+        {
+            "start": clock(start),
+            "end": clock(end),
+            "price": currency.per_kwh(price, lang),
+            **(
+                {"period": texts[f"assistant.period.{'off_peak' if price < top else 'peak'}"]}
+                if labelled
+                else {}
+            ),
+        }
         for start, end, price in ranges
     ]
 
@@ -751,7 +770,11 @@ async def get_tariff(state: Any, day: Literal["today", "tomorrow"] = "today") ->
     found: dict[str, Any] = {
         "day": wanted.isoformat(),
         "tariff": catalog(lang)[f"assistant.tariff.{tariff.kind.value}"],
-        "prices": _price_ranges(tariff.hourly(wanted, context), lang),
+        # Heures creuses et pleines des tarifs par plages (Tempo compris) ; un prix dynamique n'a
+        # que des heures moins chères que la plus chère, pas d'heures creuses à proprement parler.
+        "prices": _price_ranges(
+            tariff.hourly(wanted, context), lang, tariff.kind is not TariffKind.DYNAMIC
+        ),
         "off_peak": [
             {"start": clock(start), "end": clock(end)}
             for start, end in off_peak_ranges(tariff, wanted, context)

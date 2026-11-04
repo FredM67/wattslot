@@ -56,5 +56,7 @@
   "assistant.yesterday": "gestern",
   "assistant.week_end": "Keine Prognose über den {date} hinaus.",
   "assistant.no_other": "An diesem Tag ist kein anderes Gerät geplant.",
-  "assistant.home_about": "Geräte des Hauses, nicht der Tagesplan: Was an einem Tag läuft, steht im Plan dieses Tages."
+  "assistant.home_about": "Geräte des Hauses, nicht der Tagesplan: Was an einem Tag läuft, steht im Plan dieses Tages.",
+  "assistant.period.off_peak": "Niedertarifzeit",
+  "assistant.period.peak": "Hochtarifzeit"
 }

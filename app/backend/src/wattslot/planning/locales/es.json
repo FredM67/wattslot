@@ -56,5 +56,7 @@
   "assistant.yesterday": "ayer",
   "assistant.week_end": "No hay previsión más allá del {date}.",
   "assistant.no_other": "Ningún otro aparato previsto ese día.",
-  "assistant.home_about": "Aparatos de la casa, no el plan del día: lo que funciona un día está en el plan de ese día."
+  "assistant.home_about": "Aparatos de la casa, no el plan del día: lo que funciona un día está en el plan de ese día.",
+  "assistant.period.off_peak": "horas valle",
+  "assistant.period.peak": "horas punta"
 }
