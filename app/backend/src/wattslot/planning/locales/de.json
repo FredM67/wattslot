@@ -58,5 +58,8 @@
   "assistant.no_other": "An diesem Tag ist kein anderes Gerät geplant.",
   "assistant.home_about": "Geräte des Hauses, nicht der Tagesplan: Was an einem Tag läuft, steht im Plan dieses Tages.",
   "assistant.period.off_peak": "Niedertarifzeit",
-  "assistant.period.peak": "Hochtarifzeit"
+  "assistant.period.peak": "Hochtarifzeit",
+  "assistant.request_status.open": "offen",
+  "assistant.request_status.done": "erledigt",
+  "assistant.request_status.cancelled": "abgebrochen"
 }

@@ -7,7 +7,6 @@ les notifications : le LLM n'a rien à recalculer. Tous lisent seulement, sauf
 écrits dans la devise de la maison (``currency.amount``).
 """
 
-import hashlib
 import re
 import unicodedata
 from collections.abc import Awaitable, Callable, Sequence
@@ -71,6 +70,8 @@ HOME_GROUPS = (
     "other_loads",
 )
 OBJECTIVE_TEXT = {"autonomy": "import"}  # objectif → texte du catalogue (« objective.… »)
+# Une question de request_device vaut confirmation pendant ce délai.
+PENDING_FOR = timedelta(minutes=10)
 FRESH = timedelta(hours=2)  # au-delà, un relevé ne dit plus « en ce moment »
 RUNNING_W = 20  # en dessous, un appareil est en veille
 
@@ -78,6 +79,11 @@ RUNNING_W = 20  # en dessous, un appareil est en veille
 def language(state: Any) -> str:
     """Langue des réponses : celle réglée pour les notifications (lot 5.6)."""
     return notifications.load(state.database).language
+
+
+def today_of(state: Any) -> date:
+    """Date du jour dans le fuseau de la maison."""
+    return datetime.now(state.raw.zone).date()
 
 
 def clock(hours: float) -> str:
@@ -214,12 +220,13 @@ def plan_text(text: str | None, lang: str, day: Day = "today") -> str | None:
 
 async def _next_planned(state: Any, after: date) -> dict[str, Any] | None:
     """Premier appareil que l'horizon place après ``after``."""
-    week = await week_view_of(state, language(state))
+    lang = language(state)
+    week = await week_view_of(state, lang)
     for other in week.days if week else []:
         if other.day > after and other.devices:
             first = min(other.devices, key=lambda p: p.start_min)
             return {
-                "day": other.day.isoformat(),
+                "day": _when(other.day, today_of(state), lang),
                 "device": first.device,
                 "start": clock(first.start_min / 60),
                 "end": clock(first.end_min / 60),
@@ -233,8 +240,9 @@ async def get_day_plan(state: Any, day: Day = "today") -> dict[str, Any]:
     if view is None:
         return NO_PLAN
     found: dict[str, Any] = {
-        "day": view.day.isoformat(),
-        "computed_at": view.computed_at.isoformat(timespec="minutes") if view.computed_at else None,
+        # Jours en mots, heures locales : une date au format brut était recopiée telle quelle.
+        "day": _when(view.day, today_of(state), lang),
+        "computed_at": _moment(view.computed_at, state, lang) if view.computed_at else None,
         "recommendation": plan_text(view.recommendation, lang, day),
         "summary": _summary(view, lang),
         "warnings": [n.text for n in view.notices],
@@ -272,7 +280,10 @@ async def explain_device(state: Any, device: str, day: Day = "today") -> dict[st
     row = next((r for r in view.timeline.rows if r.device == name), None)
     status = next((s for s in view.timeline.statuses if s.device == name), None)
     explanation = next((e.text for e in view.explanations if e.device == name), None)
-    found: dict[str, Any] = {"device": name, "day": view.day.isoformat()}
+    found: dict[str, Any] = {
+        "device": name,
+        "day": _when(view.day, today_of(state), language(state)),
+    }
     if row is not None:
         found["planned"] = _bars(row.planned)
         if row.actual:
@@ -305,11 +316,13 @@ async def _not_planned(state: Any, device: str, day: date, planned: list[str]) -
     if name is None:
         return {"error": "unknown_device", "planned_devices": planned}
     # Textes dans la langue réglée et sans nom d'outil : les modèles les recopient tels quels.
-    texts = catalog(language(state))
+    lang = language(state)
+    texts = catalog(lang)
+    today = today_of(state)
+    # Sans « scheduled: false », que la raison dit déjà : le champ était cité tel quel.
     found: dict[str, Any] = {
         "device": name,
-        "day": day.isoformat(),
-        "scheduled": False,
+        "day": _when(day, today, lang),
         "reason": texts["assistant.not_planned"],
     }
     week = await week_view_of(state, language(state))
@@ -319,7 +332,7 @@ async def _not_planned(state: Any, device: str, day: date, planned: list[str]) -
         slot = next((p for p in other.devices if find_name(p.device, [name]) is not None), None)
         if slot is not None:
             found["next_planned"] = {
-                "day": other.day.isoformat(),
+                "day": _when(other.day, today, lang),
                 "start": clock(slot.start_min / 60),
                 "end": clock(slot.end_min / 60),
             }
@@ -331,13 +344,16 @@ async def _not_planned(state: Any, device: str, day: date, planned: list[str]) -
 
 
 def _when(day: date, today: date, lang: str) -> str:
-    """« aujourd'hui », « demain », sinon la date en toutes lettres."""
+    """« aujourd'hui », « demain », « hier », sinon la date en toutes lettres."""
     texts = catalog(lang)
-    if day == today:
-        return texts["assistant.today"]
-    if day == today + timedelta(days=1):
-        return texts["assistant.tomorrow"]
-    return long_date(day, lang)
+    near = {0: "today", 1: "tomorrow", -1: "yesterday"}.get((day - today).days)
+    return texts[f"assistant.{near}"] if near else long_date(day, lang)
+
+
+def _moment(moment: datetime, state: Any, lang: str) -> str:
+    """Jour en mots et heure locale : « aujourd'hui 05:12 »."""
+    local = moment.astimezone(state.raw.zone)
+    return f"{_when(local.date(), today_of(state), lang)} {local:%H:%M}"
 
 
 async def get_week(state: Any) -> dict[str, Any]:
@@ -345,14 +361,14 @@ async def get_week(state: Any) -> dict[str, Any]:
     view = await week_view_of(state, lang)
     if view is None:
         return NO_PLAN
-    today = datetime.now(state.raw.zone).date()
+    today = today_of(state)
     return {
         # Le premier jour est aujourd'hui : sans le dire, « le reste de la semaine » le comptait.
-        "today": today.isoformat(),
+        "today": long_date(today, lang),
         "days": [
             {
-                "day": d.day.isoformat(),
-                # En mots aussi : avec la seule date, un modèle comptait encore aujourd'hui.
+                # En mots seulement : avec la date, un modèle comptait encore aujourd'hui, et
+                # une date au format brut était recopiée.
                 "when": _when(d.day, today, lang),
                 "production_kwh": round(d.production_kwh, 1),
                 # La qualité en toutes lettres seulement : « sunny » était recopié tel quel.
@@ -531,7 +547,10 @@ async def get_energy(state: Any, day: str = "today") -> dict[str, Any]:
             "error": "no_data",
             "hint": "No measurement kept for this day, and no plan.",
         }
-    result: dict[str, Any] = {"day": wanted.isoformat(), "measured": measured or None}
+    result: dict[str, Any] = {
+        "day": _when(wanted, today_of(state), language(state)),
+        "measured": measured or None,
+    }
     if view is not None:
         result["planned"] = {
             "production_kwh": round(sum(h.production_kwh for h in view.hours), 2),
@@ -549,10 +568,11 @@ async def get_forecast(state: Any, day: Literal["today", "tomorrow"] = "today") 
     view = await day_view_of(state, day, language(state))
     if view is None:
         return NO_PLAN
+    when = _when(view.day, today_of(state), language(state))
     if not view.solar:  # maison sans installation solaire (lot 7.4)
-        return {"day": view.day.isoformat(), "solar_installation": False, "production_kwh": 0}
+        return {"day": when, "solar_installation": False, "production_kwh": 0}
     return {
-        "day": view.day.isoformat(),
+        "day": when,
         "production_kwh": round(view.weather.production_kwh, 1),
         **(
             {"weather": WEATHER[language(state)][view.weather.quality]}
@@ -622,22 +642,29 @@ async def get_problems(problems: Callable[[], Awaitable[Sequence[Any]]]) -> dict
     }
 
 
-def confirm_code(key: str, latest: date | None, today: date) -> str:
-    """Code à rendre pour confirmer une demande : propre à l'équipement, à la date limite et au
-    jour, il ne se devine pas ; un modèle doit donc d'abord rendre la question à l'utilisateur."""
-    seed = f"{key}|{latest.isoformat() if latest else ''}|{today.isoformat()}"
-    return hashlib.sha256(seed.encode()).hexdigest()[:6]
+def _pending(state: Any) -> dict[tuple[str, date | None], datetime]:
+    """Questions posées par request_device et pas encore confirmées : (équipement, date limite)
+    → moment de la question. En mémoire : une question ne survit pas à un redémarrage."""
+    found: dict[tuple[str, date | None], datetime] | None = getattr(
+        state, "assistant_pending", None
+    )
+    if found is None:
+        found = {}
+        state.assistant_pending = found
+    return found
 
 
 def request_device(
-    state: Any, device: str, latest_date: str | None = None, code: str | None = None
+    state: Any, device: str, latest_date: str | None = None, confirm: bool = False
 ) -> dict[str, Any]:
     """Demande pour un équipement (lot 4.5), au plus tard ``latest_date`` (AAAA-MM-JJ) ; une
     demande déjà ouverte pour lui change seulement de date. Le calcul suivant la place.
 
-    En deux temps : sans code, rien n'est déposé, l'outil rend la question à poser et le code ;
-    la demande n'est déposée qu'avec ce code, donc après l'accord de l'utilisateur. Les deux
-    modèles essayés déposaient la demande sans rien demander malgré la règle du prompt."""
+    En deux temps : sans ``confirm``, rien n'est déposé, l'outil rend la question à poser et la
+    retient ; la demande n'est déposée qu'avec ``confirm`` après cette question, et dans les
+    ``PENDING_FOR`` qui suivent. Les deux modèles essayés déposaient la demande sans rien
+    demander malgré la règle du prompt ; un code rendu avec la question était montré à
+    l'utilisateur."""
     home = home_model.load(state.graph)
     requestable = cycle_appliances(home, configuration.load(state.graph))
     names = [a.name for a in requestable]
@@ -662,8 +689,10 @@ def request_device(
                 "hint": f"The date is in the past; today is {today.isoformat()}.",
             }
     key = next(a.key for a in requestable if a.name == name)
-    expected = confirm_code(key, latest, today)
-    if code is None:
+    now = datetime.now(UTC)
+    pending = _pending(state)
+    if not confirm:
+        pending[(key, latest)] = now
         lang = language(state)
         texts = catalog(lang)
         question = (
@@ -676,38 +705,41 @@ def request_device(
             "latest_date": latest.isoformat() if latest else None,
             "filed": False,
             "question": question,
-            "confirm_code": expected,
-            "next": "Nothing filed yet. Ask the user this question as it is, without the code. "
-            "Only if they agree, call again with the same device and latest_date and this "
-            "confirm_code.",
+            "next": "Nothing filed yet. Ask the user this question as it is. Only if they agree, "
+            "call again with the same device and latest_date and confirm true.",
         }
-    if code.strip() != expected:
+    asked = pending.pop((key, latest), None)
+    if asked is None or now - asked > PENDING_FOR:
         return {
-            "error": "invalid_confirm_code",
-            "hint": "Call request_device without confirm_code to get the question and the code.",
+            "error": "not_asked",
+            "hint": "Nothing filed. Call request_device without confirm, ask the user the "
+            "question it returns and wait for their answer.",
         }
-    found = user_requests.ask(state.database, key, latest, datetime.now(UTC))
+    found = user_requests.ask(state.database, key, latest, now)
     return {
         "device": name,
         "latest_date": found.latest.isoformat() if found.latest else None,
         "filed": True,
         "status": found.status.value,
-        "note": "Filed. The next computation of the plan places it at the best time. Do not "
-        "show the code to the user.",
+        "note": "Filed. The next computation of the plan places it at the best time.",
     }
 
 
 def get_requests(state: Any) -> dict[str, Any]:
-    """Demandes ouvertes, puis celles closes depuis une semaine, comme « Mes demandes »."""
+    """Demandes ouvertes, puis celles closes depuis une semaine, comme « Mes demandes ». État
+    et jours en mots : « cancelled » et les dates au format brut étaient recopiés."""
     names = {d.key: d.name for d in home_model.load(state.graph).devices}
+    lang = language(state)
+    texts = catalog(lang)
+    today = today_of(state)
     return {
         "requests": [
             {
                 "device": names.get(r.device, r.device),
-                "status": r.status.value,
-                "asked_on": r.created_at.astimezone(state.raw.zone).date().isoformat(),
-                "latest_date": r.latest.isoformat() if r.latest else None,
-                **({"launched_on": r.launched_on.isoformat()} if r.launched_on else {}),
+                "status": texts[f"assistant.request_status.{r.status.value}"],
+                "asked_on": _when(r.created_at.astimezone(state.raw.zone).date(), today, lang),
+                "latest_date": _when(r.latest, today, lang) if r.latest else None,
+                **({"launched_on": _when(r.launched_on, today, lang)} if r.launched_on else {}),
             }
             for r in user_requests.recent(state.database, datetime.now(UTC))
         ]
@@ -764,11 +796,11 @@ async def get_tariff(state: Any, day: Literal["today", "tomorrow"] = "today") ->
     quand il y en a un."""
     lang = language(state)
     tariff = configuration.tariff_of(configuration.load(state.graph))
-    today = datetime.now(state.raw.zone).date()
+    today = today_of(state)
     wanted = today + timedelta(days=1) if day == "tomorrow" else today
     context = await _tariff_context(state, tariff, today)
     found: dict[str, Any] = {
-        "day": wanted.isoformat(),
+        "day": _when(wanted, today, lang),
         "tariff": catalog(lang)[f"assistant.tariff.{tariff.kind.value}"],
         # Heures creuses et pleines des tarifs par plages (Tempo compris) ; un prix dynamique n'a
         # que des heures moins chères que la plus chère, pas d'heures creuses à proprement parler.

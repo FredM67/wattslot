@@ -58,5 +58,8 @@
   "assistant.no_other": "Nessun altro apparecchio previsto quel giorno.",
   "assistant.home_about": "Apparecchi della casa, non il piano del giorno: ciò che funziona un giorno è nel piano di quel giorno.",
   "assistant.period.off_peak": "fascia economica",
-  "assistant.period.peak": "fascia di punta"
+  "assistant.period.peak": "fascia di punta",
+  "assistant.request_status.open": "in corso",
+  "assistant.request_status.done": "eseguita",
+  "assistant.request_status.cancelled": "annullata"
 }

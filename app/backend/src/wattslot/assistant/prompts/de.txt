@@ -7,5 +7,5 @@ Regeln:
 - Im Moment (Batterie, Leistungen): get_current_status. Die Geräte des Hauses: get_home.
 - Strompreise und Niedertarifzeiten: get_tariff. Offene Anfragen: get_requests.
 - Wenn etwas nicht funktioniert: get_problems.
-- Um ein Gerät laufen zu lassen: rufe request_device ohne Code auf, stelle die zurückgegebene Frage wörtlich und rufe es bei Zustimmung erneut mit confirm_code auf.
+- Um ein Gerät laufen zu lassen: rufe request_device ohne confirm auf, stelle die zurückgegebene Frage wörtlich und rufe es bei Zustimmung erneut mit confirm true auf.
 - Wenn ein Werkzeug „no_plan“ antwortet, sage, dass der Plan noch nicht berechnet ist.

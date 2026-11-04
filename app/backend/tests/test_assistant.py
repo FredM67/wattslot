@@ -22,6 +22,7 @@ from tests.v1_oracle import STATES, state_named
 from wattslot import home_model
 from wattslot.assistant.prompts import prompt
 from wattslot.assistant.tools import (
+    PENDING_FOR,
     WEATHER,
     _max_hour,
     _next_action,
@@ -42,6 +43,7 @@ from wattslot.ingress import HOME_ASSISTANT_CORE_ADDRESS
 from wattslot.languages import LANGUAGES
 from wattslot.main import create_app
 from wattslot.planning.store import PlanStore
+from wattslot.planning.warning_texts import long_date
 from wattslot.runtime import RunMode, Settings
 from wattslot.storage.database import open_database
 from wattslot.storage.graph import GraphStore
@@ -114,7 +116,7 @@ def test_the_client_lists_ten_read_only_tools_and_one_action(api: TestClient) ->
 
 def test_day_plan_and_week(api: TestClient) -> None:
     plan = _call(api, "get_day_plan", {"day": "today"})
-    assert plan["day"] == "2025-10-15"
+    assert plan["day"] == long_date(date(2025, 10, 15), "fr")  # en toutes lettres
     assert "Lave-linge : 11h" in plan["recommendation"]  # en français, la langue réglée
     assert plan["summary"]["production_kwh"] > 0 and "battery_end_of_day_percent" in plan["summary"]
     assert "next_appliance" in plan  # selon l'heure : le prochain appareil, ou aucun
@@ -285,43 +287,43 @@ HOME = HomeModel(
 
 
 def _request(api: TestClient, arguments: dict[str, Any]) -> dict[str, Any]:
-    """Demande confirmée : la question d'abord, puis le même appel avec son code."""
-    asked = _call(api, "request_device", arguments)
-    return _call(api, "request_device", {**arguments, "confirm_code": asked["confirm_code"]})
+    """Demande confirmée : la question d'abord, puis le même appel confirmé."""
+    _call(api, "request_device", arguments)
+    return _call(api, "request_device", {**arguments, "confirm": True})
 
 
-def test_request_device_asks_first_then_files_with_the_code(api: TestClient) -> None:
-    """« Fais tourner le lave-linge avant demain soir » : rien n'est déposé sans le code rendu
-    avec la question ; les modèles essayés déposaient la demande sans rien demander."""
+def test_request_device_asks_first_then_files_once_confirmed(api: TestClient) -> None:
+    """« Fais tourner le lave-linge avant demain soir » : rien n'est déposé sans la question
+    d'abord ; les modèles essayés déposaient la demande sans rien demander, puis montraient le
+    code rendu avec la question."""
     home_model.save(api.app.state.graph, HOME)  # type: ignore[attr-defined]
+    refused = _call(api, "request_device", {"device": "Lave-linge", "confirm": True})
+    assert refused["error"] == "not_asked"  # confirmé sans question
     asked = _call(api, "request_device", {"device": "lave linge", "latest_date": "2099-01-31"})
     assert asked["filed"] is False and asked["device"] == "Lave-linge"
     assert asked["question"].startswith("Faire tourner « Lave-linge »")  # langue réglée
-    assert "2099" in asked["question"] and asked["confirm_code"]
+    assert "2099" in asked["question"] and "confirm_code" not in asked
+    # La question vaut pour cette date limite seulement.
+    other = _call(api, "request_device", {"device": "Lave-linge", "confirm": True})
+    assert other["error"] == "not_asked"
     assert api.get("/api/requests").json() == []
 
-    for wrong in ("000000", "tout de suite"):
-        refused = _call(
-            api,
-            "request_device",
-            {"device": "Lave-linge", "latest_date": "2099-01-31", "confirm_code": wrong},
-        )
-        assert refused["error"] == "invalid_confirm_code"
-    # Le code vaut pour cette date limite seulement.
-    other = _call(
-        api, "request_device", {"device": "Lave-linge", "confirm_code": asked["confirm_code"]}
-    )
-    assert other["error"] == "invalid_confirm_code"
-    assert api.get("/api/requests").json() == []
-
-    code = asked["confirm_code"]
-    filed = _call(
-        api,
-        "request_device",
-        {"device": "Lave-linge", "latest_date": "2099-01-31", "confirm_code": code},
-    )
+    confirmed = {"device": "Lave-linge", "latest_date": "2099-01-31", "confirm": True}
+    filed = _call(api, "request_device", confirmed)
     assert filed["filed"] is True and filed["status"] == "open"
     assert filed["latest_date"] == "2099-01-31"
+    # Une question, une demande : la confirmer de nouveau demande une nouvelle question.
+    assert _call(api, "request_device", confirmed)["error"] == "not_asked"
+
+
+def test_a_question_is_worth_confirmation_for_ten_minutes(api: TestClient) -> None:
+    home_model.save(api.app.state.graph, HOME)  # type: ignore[attr-defined]
+    _call(api, "request_device", {"device": "Lave-linge"})
+    pending = api.app.state.assistant_pending  # type: ignore[attr-defined]
+    for key in pending:
+        pending[key] -= PENDING_FOR + timedelta(seconds=1)
+    late = _call(api, "request_device", {"device": "Lave-linge", "confirm": True})
+    assert late["error"] == "not_asked" and api.get("/api/requests").json() == []
 
 
 def test_request_device_files_a_request_like_my_requests(api: TestClient) -> None:
@@ -350,7 +352,7 @@ def test_request_device_understands_today_and_tomorrow(api: TestClient) -> None:
     )
     found = _call(api, "request_device", {"device": "Lave-linge", "latest_date": "Tomorrow"})
     assert found["latest_date"] == (today + timedelta(days=1)).isoformat()
-    assert "without the code" in found["next"]
+    assert "Ask the user this question" in found["next"]
 
 
 def test_the_tool_schemas_stay_under_the_token_budget(api: TestClient) -> None:
@@ -437,16 +439,20 @@ def test_an_appliance_of_the_home_not_planned_this_day(tmp_path: Path) -> None:
         dishwasher = _call(client, "explain_device", {"device": "Lave-vaisselle"})
         unknown = _call(client, "explain_device", {"device": "voiture"})
 
-    assert washer["device"] == "Lave-linge" and washer["scheduled"] is False
+    assert washer["device"] == "Lave-linge" and "scheduled" not in washer
     assert {o["device"] for o in washer["other_appliances_this_day"]} == {
         "Chauffe-eau",
         "Piscine (filtration)",
     }
-    assert washer["next_planned"] == {"day": "2026-10-15", "start": "11:00", "end": "12:10"}
+    assert washer["next_planned"] == {
+        "day": "Jeudi 15 Octobre 2026",
+        "start": "11:00",
+        "end": "12:10",
+    }
     # Dans la langue réglée et sans nom d'outil : les modèles recopiaient « request_device ».
     assert washer["reason"].startswith("Pas prévu ce jour-là")
     assert washer["hint"].startswith("Il peut être demandé") and "_" not in washer["hint"]
-    assert dishwasher["scheduled"] is False and "next_planned" not in dishwasher
+    assert "scheduled" not in dishwasher and "next_planned" not in dishwasher
     assert unknown["error"] == "unknown_device" and "Chauffe-eau" in unknown["planned_devices"]
 
 
@@ -495,8 +501,9 @@ def test_requests_list_like_my_requests(api: TestClient) -> None:
     home_model.save(api.app.state.graph, HOME)  # type: ignore[attr-defined]
     _request(api, {"device": "lave vaisselle", "latest_date": "2099-01-31"})
     (found,) = _call(api, "get_requests")["requests"]
-    assert found["device"] == "Lave-vaisselle" and found["status"] == "open"
-    assert found["latest_date"] == "2099-01-31" and "launched_on" not in found
+    assert found["device"] == "Lave-vaisselle" and found["status"] == "en cours"
+    assert found["latest_date"] == "Samedi 31 Janvier 2099" and "launched_on" not in found
+    assert found["asked_on"] == "aujourd'hui"  # en mots
 
 
 def test_tariff_of_the_home_without_home_assistant(

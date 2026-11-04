@@ -94,12 +94,12 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=REQUEST)
     def request_device(
-        device: str, latest_date: str | None = None, confirm_code: str | None = None
+        device: str, latest_date: str | None = None, confirm: bool = False
     ) -> dict[str, Any]:
         """Run an appliance at the best time, by latest_date (today, tomorrow or YYYY-MM-DD).
-        Call first without confirm_code: nothing is filed, ask the user the question returned;
-        call again with its confirm_code if they agree."""
-        return tools.request_device(state(), device, latest_date, confirm_code)
+        Call first without confirm: nothing is filed, ask the user the question returned; call
+        again with confirm true if they agree."""
+        return tools.request_device(state(), device, latest_date, confirm)
 
     return server
 

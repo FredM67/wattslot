@@ -58,5 +58,8 @@
   "assistant.no_other": "Die dag is geen ander apparaat gepland.",
   "assistant.home_about": "Apparaten van het huis, niet het dagplan: wat op een dag draait, staat in het plan van die dag.",
   "assistant.period.off_peak": "daluren",
-  "assistant.period.peak": "piekuren"
+  "assistant.period.peak": "piekuren",
+  "assistant.request_status.open": "open",
+  "assistant.request_status.done": "uitgevoerd",
+  "assistant.request_status.cancelled": "geannuleerd"
 }

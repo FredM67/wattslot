@@ -58,5 +58,8 @@
   "assistant.no_other": "No other appliance planned that day.",
   "assistant.home_about": "Appliances of the home, not the plan of the day: what runs on a day is in that day's plan.",
   "assistant.period.off_peak": "off-peak hours",
-  "assistant.period.peak": "peak hours"
+  "assistant.period.peak": "peak hours",
+  "assistant.request_status.open": "open",
+  "assistant.request_status.done": "done",
+  "assistant.request_status.cancelled": "cancelled"
 }
