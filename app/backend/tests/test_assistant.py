@@ -497,13 +497,21 @@ def test_the_next_appliance_and_its_other_starts() -> None:
 
 def test_requests_list_like_my_requests(api: TestClient) -> None:
     """« Quelles sont mes demandes en cours ? »"""
-    assert _call(api, "get_requests") == {"requests": []}
+    # Aucune ouverte : une phrase, et non une liste où les closes passaient pour « en cours ».
+    assert _call(api, "get_requests") == {"open": "Aucune demande en cours."}
     home_model.save(api.app.state.graph, HOME)  # type: ignore[attr-defined]
     _request(api, {"device": "lave vaisselle", "latest_date": "2099-01-31"})
-    (found,) = _call(api, "get_requests")["requests"]
-    assert found["device"] == "Lave-vaisselle" and found["status"] == "en cours"
+    (found,) = _call(api, "get_requests")["open"]
+    assert found["device"] == "Lave-vaisselle" and "status" not in found
     assert found["latest_date"] == "Samedi 31 Janvier 2099" and "launched_on" not in found
     assert found["asked_on"] == "aujourd'hui"  # en mots
+
+    (opened,) = api.get("/api/requests").json()
+    assert api.delete(f"/api/requests/{opened['id']}").status_code < 300
+    listed = _call(api, "get_requests")
+    assert listed["open"] == "Aucune demande en cours."
+    (closed,) = listed["closed_this_week"]
+    assert closed["device"] == "Lave-vaisselle" and closed["status"] == "annulée"
 
 
 def test_tariff_of_the_home_without_home_assistant(

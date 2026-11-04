@@ -88,8 +88,8 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     def get_requests() -> dict[str, Any]:
-        """Requests filed in My requests: open ones, then recently closed. An open one with a
-        launch date has already run. Not the next appliance: get_day_plan."""
+        """Requests filed in My requests: open ones, and apart those closed this week. An open
+        one with a launch date has already run. Not the next appliance: get_day_plan."""
         return tools.get_requests(state())
 
     @server.tool(annotations=REQUEST)

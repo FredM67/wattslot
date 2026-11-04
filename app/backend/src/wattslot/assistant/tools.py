@@ -727,22 +727,33 @@ def request_device(
 
 def get_requests(state: Any) -> dict[str, Any]:
     """Demandes ouvertes, puis celles closes depuis une semaine, comme « Mes demandes ». État
-    et jours en mots : « cancelled » et les dates au format brut étaient recopiés."""
+    et jours en mots : « cancelled » et les dates au format brut étaient recopiés. Ouvertes et
+    closes à part, avec une phrase quand aucune n'est ouverte : dans une seule liste, les trois
+    modèles essayés présentaient les demandes annulées ou faites comme « en cours »."""
     names = {d.key: d.name for d in home_model.load(state.graph).devices}
     lang = language(state)
     texts = catalog(lang)
     today = today_of(state)
+    found = user_requests.recent(state.database, datetime.now(UTC))
+
+    def described(r: user_requests.UserRequest) -> dict[str, Any]:
+        return {
+            "device": names.get(r.device, r.device),
+            **(
+                {"status": texts[f"assistant.request_status.{r.status.value}"]}
+                if r.status is not user_requests.Status.OPEN
+                else {}
+            ),
+            "asked_on": _when(r.created_at.astimezone(state.raw.zone).date(), today, lang),
+            "latest_date": _when(r.latest, today, lang) if r.latest else None,
+            **({"launched_on": _when(r.launched_on, today, lang)} if r.launched_on else {}),
+        }
+
+    opened = [described(r) for r in found if r.status is user_requests.Status.OPEN]
+    closed = [described(r) for r in found if r.status is not user_requests.Status.OPEN]
     return {
-        "requests": [
-            {
-                "device": names.get(r.device, r.device),
-                "status": texts[f"assistant.request_status.{r.status.value}"],
-                "asked_on": _when(r.created_at.astimezone(state.raw.zone).date(), today, lang),
-                "latest_date": _when(r.latest, today, lang) if r.latest else None,
-                **({"launched_on": _when(r.launched_on, today, lang)} if r.launched_on else {}),
-            }
-            for r in user_requests.recent(state.database, datetime.now(UTC))
-        ]
+        "open": opened or texts["assistant.no_open_request"],
+        **({"closed_this_week": closed} if closed else {}),
     }
 
 

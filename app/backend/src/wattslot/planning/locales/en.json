@@ -61,5 +61,6 @@
   "assistant.period.peak": "peak hours",
   "assistant.request_status.open": "open",
   "assistant.request_status.done": "done",
-  "assistant.request_status.cancelled": "cancelled"
+  "assistant.request_status.cancelled": "cancelled",
+  "assistant.no_open_request": "No open request."
 }

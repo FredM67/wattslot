@@ -61,5 +61,6 @@
   "assistant.period.peak": "heures pleines",
   "assistant.request_status.open": "en cours",
   "assistant.request_status.done": "faite",
-  "assistant.request_status.cancelled": "annulée"
+  "assistant.request_status.cancelled": "annulée",
+  "assistant.no_open_request": "Aucune demande en cours."
 }

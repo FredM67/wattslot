@@ -61,5 +61,6 @@
   "assistant.period.peak": "Hochtarifzeit",
   "assistant.request_status.open": "offen",
   "assistant.request_status.done": "erledigt",
-  "assistant.request_status.cancelled": "abgebrochen"
+  "assistant.request_status.cancelled": "abgebrochen",
+  "assistant.no_open_request": "Keine offene Anfrage."
 }

@@ -61,5 +61,6 @@
   "assistant.period.peak": "fascia di punta",
   "assistant.request_status.open": "in corso",
   "assistant.request_status.done": "eseguita",
-  "assistant.request_status.cancelled": "annullata"
+  "assistant.request_status.cancelled": "annullata",
+  "assistant.no_open_request": "Nessuna richiesta in corso."
 }
