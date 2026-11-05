@@ -51,5 +51,8 @@
   },
   "ministral-3": {"model": "ministral-3:3b", "options": {"num_ctx": 16384}},
   "bonsai-2-9b": {"model": "bonsai-2:9b", "think": false, "options": {"num_ctx": 16384}},
-  "bonsai-2-9b-reflexion": {"model": "bonsai-2:9b", "think": true, "options": {"num_ctx": 16384}}
+  "bonsai-2-9b-reflexion": {"model": "bonsai-2:9b", "think": true, "options": {"num_ctx": 16384}},
+  "qwen3.5-4b-mtp-reflexion": {"model": "qwen3.5:4b-mtp-q4_K_M", "think": true, "options": {"num_ctx": 16384}},
+  "qwen3-q8": {"model": "qwen3:4b-instruct-2507-q8_0", "options": {"num_ctx": 16384}},
+  "qwen3-thinking": {"model": "qwen3:4b-thinking-2507-q4_K_M", "think": true, "options": {"num_ctx": 16384}}
 }
