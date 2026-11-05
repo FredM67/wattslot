@@ -68,9 +68,10 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     async def get_forecast(day: str = "today") -> dict[str, Any]:
-        """Weather and solar forecast of a day, up to about a week ahead (today, tomorrow or
-        YYYY-MM-DD); further: says when the forecast ends. Hour by hour for today and
-        tomorrow."""
+        # Banc d'essai (2 x 5 essais) : avec « up to about a week ahead », qwen3 n'appelait plus
+        # get_tariff pour « le prix du kWh » (0 sur 10, contre 10 sur 10 avec ce texte).
+        """Weather and solar forecast of a day (today, tomorrow or YYYY-MM-DD): hour by hour
+        today and tomorrow; says when the forecast ends."""
         return await tools.get_forecast(state(), day)
 
     @server.tool(annotations=READ_ONLY)
@@ -85,8 +86,8 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     async def get_tariff(day: Literal["today", "tomorrow"] = "today") -> dict[str, Any]:
-        """Electricity price per time range, off-peak hours, color of the day. Not the cost of
-        the day: get_day_plan."""
+        """Electricity price (price of a kWh) per time range, off-peak hours, color of the day.
+        Not the cost of the day: get_day_plan."""
         return await tools.get_tariff(state(), day)
 
     @server.tool(annotations=READ_ONLY)
