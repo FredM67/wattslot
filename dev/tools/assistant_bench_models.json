@@ -9,6 +9,11 @@
     "think": true,
     "options": {"num_ctx": 16384}
   },
+  "gemma4-rapide": {
+    "model": "gemma4:e2b-it-qat",
+    "think": false,
+    "options": {"num_ctx": 16384}
+  },
   "lfm3": {
     "model": "lfm3:latest",
     "think": true,
