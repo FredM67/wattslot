@@ -7,9 +7,20 @@ question est posée plusieurs fois (``--runs``) : ces petits modèles ne répond
 la même façon, une seule réponse ne suffit pas pour conclure.
 
 Pour chaque tour, il enregistre les outils appelés et leurs arguments, la réponse, la longueur de
-la réflexion et les durées, et relève les défauts visibles sans relire le fond : aucun outil
-appelé, nom d'outil ou de champ cité, marqueur de modèle (``<channel|>``), date au format brut,
-caractères chinois, réponse vide. Le fond (chiffres, sens) reste à juger en lisant le rapport.
+la réflexion et les durées (le tour entier, et son dernier passage, seul compté par le panneau
+ⓘ d'Open WebUI), et relève les défauts visibles sans relire le fond : aucun outil appelé, nom
+d'outil ou de champ cité, marqueur de modèle (``<channel|>``), date au format brut, caractères
+chinois, réponse en anglais, réponse vide. Le fond (chiffres, sens) reste à juger en lisant le
+rapport.
+
+**Variantes** (``--variants``) : un fichier JSON qui remplace, côté banc, des descriptions
+d'outils ou le prompt, pour comparer des formulations sans reconstruire l'image :
+
+    {"courte": {"tools": {"get_forecast": "Forecast of a day."}},
+     "rappel": {"prompt_append": "Pour une date future, consulte la prévision."}}
+
+La variante « actuelle » (outils et prompt du serveur) est jouée en premier, sauf si le fichier
+la définit ; ``prompt`` remplace le prompt entier, ``prompt_append`` l'allonge.
 
 **Aucune demande n'est déposée** : un appel de ``request_device`` avec ``confirm`` n'est pas
 transmis à WattSlot (``--allow-requests`` pour le transmettre), il est relevé comme un défaut,
@@ -24,6 +35,7 @@ Depuis la racine du dépôt (adresses de l'application et d'Ollama en argument o
     python dev/tools/assistant_bench.py --wattslot http://192.0.2.10:8100
         --ollama http://192.0.2.20:11434 [--models qwen3,lfm3] [--questions 6,12,17]
         [--runs 3] [--profiles dev/tools/assistant_bench_models.json]
+        [--variants variantes.json]
 
 Les profils de modèles (étiquette Ollama, réflexion, options) sont dans
 ``assistant_bench_models.json`` : les mêmes réglages que les modèles d'Open WebUI.
@@ -126,6 +138,83 @@ LEAKS: dict[str, re.Pattern[str]] = {
     "chinois": re.compile(r"[一-鿿]"),
 }
 
+# Mots outils fréquents, pour repérer une réponse (ou une réflexion recopiée) en anglais.
+ENGLISH = frozenset(
+    {
+        "the",
+        "is",
+        "are",
+        "was",
+        "cannot",
+        "can't",
+        "i",
+        "we",
+        "you",
+        "it",
+        "this",
+        "that",
+        "for",
+        "with",
+        "no",
+        "not",
+        "any",
+        "will",
+        "would",
+        "please",
+        "now",
+        "have",
+        "has",
+        "there",
+        "what",
+        "which",
+        "only",
+        "available",
+        "provide",
+    }
+)
+FRENCH = frozenset(
+    {
+        "le",
+        "la",
+        "les",
+        "est",
+        "sont",
+        "de",
+        "des",
+        "du",
+        "un",
+        "une",
+        "pour",
+        "avec",
+        "pas",
+        "aucun",
+        "je",
+        "tu",
+        "vous",
+        "il",
+        "ce",
+        "cette",
+        "qui",
+        "que",
+        "et",
+        "en",
+        "au",
+        "aux",
+        "sur",
+        "dans",
+        "ne",
+    }
+)
+
+
+def looks_english(text: str) -> bool:
+    """Au moins une phrase en anglais : assez de mots anglais, même mêlés à du français (une
+    réflexion recopiée avant la réponse)."""
+    words = re.findall(r"[a-z']+", text.lower())
+    english = sum(w in ENGLISH for w in words)
+    french = sum(w in FRENCH for w in words)
+    return english >= 4 and english * 3 >= french
+
 
 def post_json(url: str, body: Any, timeout: float = TIMEOUT) -> Any:
     request = urllib.request.Request(
@@ -204,18 +293,25 @@ class TurnResult:
     turn: int
     question: int | None
     text: str
+    variant: str = ""
     answer: str = ""
     steps: list[Step] = field(default_factory=list)
     thinking_chars: int = 0
     wall_s: float = 0.0
+    last_s: float = 0.0  # dernier passage seul (après les outils), comme le panneau ⓘ
     ollama_s: float = 0.0
     eval_count: int = 0
     error: str | None = None
     flags: list[str] = field(default_factory=list)
     verdict: str = ""
 
+    @property
+    def column(self) -> str:
+        """Colonne du résumé : le profil, et la variante s'il y en a une."""
+        return f"{self.model} · {self.variant}" if self.variant else self.model
 
-def flags_of(result: TurnResult, expected: frozenset[str]) -> list[str]:
+
+def flags_of(result: TurnResult, expected: frozenset[str], lang: str = "fr") -> list[str]:
     """Défauts visibles d'un tour ; ceux qui rendent la réponse fausse viennent en tête."""
     found: list[str] = []
     called = {s.name for s in result.steps}
@@ -230,6 +326,8 @@ def flags_of(result: TurnResult, expected: frozenset[str]) -> list[str]:
     for label, pattern in LEAKS.items():
         if pattern.search(result.answer):
             found.append(label)
+    if lang != "en" and looks_english(result.answer):
+        found.append("anglais")
     return found
 
 
@@ -266,6 +364,36 @@ def load_profiles(path: Path) -> dict[str, Profile]:
     }
 
 
+@dataclass(frozen=True)
+class Variant:
+    """Formulation essayée : descriptions d'outils et prompt remplacés côté banc."""
+
+    name: str
+    tools: dict[str, str] = field(default_factory=dict)
+    prompt: str | None = None
+    prompt_append: str = ""
+
+
+CURRENT = Variant("actuelle")
+
+
+def load_variants(path: Path) -> list[Variant]:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    found = [
+        Variant(
+            name=name,
+            tools=spec.get("tools", {}),
+            prompt=spec.get("prompt"),
+            prompt_append=spec.get("prompt_append", ""),
+        )
+        for name, spec in raw.items()
+        if not name.startswith("_")
+    ]
+    if all(v.name != CURRENT.name for v in found):
+        found.insert(0, CURRENT)
+    return found
+
+
 class Bench:
     def __init__(
         self,
@@ -274,13 +402,31 @@ class Bench:
         prompt: str,
         allow_requests: bool = False,
         post: Callable[[str, Any], Any] = post_json,
+        lang: str = "fr",
     ) -> None:
         self.chat_url = ollama.rstrip("/") + "/api/chat"
         self.mcp = mcp
-        self.prompt = prompt
+        self.base_prompt = self.prompt = prompt
         self.allow_requests = allow_requests
         self.post = post
+        self.lang = lang
         self.tools = ollama_tools(mcp.tools())
+        self.descriptions = {
+            t["function"]["name"]: t["function"]["description"] for t in self.tools
+        }
+        self.variant = CURRENT
+
+    def use(self, variant: Variant) -> None:
+        """Formulation des tours suivants, à partir des outils et du prompt du serveur."""
+        unknown = set(variant.tools) - set(self.descriptions)
+        if unknown:
+            raise ValueError(f"variante {variant.name} : outils inconnus {sorted(unknown)}")
+        for tool in self.tools:
+            name = tool["function"]["name"]
+            tool["function"]["description"] = variant.tools.get(name, self.descriptions[name])
+        prompt = self.base_prompt if variant.prompt is None else variant.prompt
+        self.prompt = f"{prompt}\n{variant.prompt_append}" if variant.prompt_append else prompt
+        self.variant = variant
 
     def _chat(self, profile: Profile, messages: list[dict[str, Any]]) -> dict[str, Any]:
         body: dict[str, Any] = {
@@ -329,6 +475,7 @@ class Bench:
                 )
                 if not calls:
                     result.answer = message.get("content", "")
+                    result.last_s = reply.get("total_duration", 0) / 1e9
                     break
                 for call in calls:
                     function = call.get("function", {})
@@ -356,9 +503,10 @@ class Bench:
                 turn=index + 1,
                 question=turn.question,
                 text=turn.text,
+                variant="" if self.variant is CURRENT else self.variant.name,
             )
             self.turn(profile, messages, result)
-            result.flags = flags_of(result, turn.tools)
+            result.flags = flags_of(result, turn.tools, self.lang)
             result.verdict = verdict_of(result.flags)
             found.append(result)
         return found
@@ -377,28 +525,38 @@ def scenario_verdict(turns: list[TurnResult]) -> str:
 DOTS = {"ok": "🟢", "mid": "🟠", "ko": "🔴"}
 
 
-def summary(results: list[TurnResult], models: list[str]) -> str:
-    """Résumé en Markdown : par question et par modèle, les pastilles des essais et la durée
-    médiane ; puis chaque réponse, pour juger le fond."""
+def summary(results: list[TurnResult], columns: list[str]) -> str:
+    """Résumé en Markdown : par question et par colonne (profil, ou profil et variante), les
+    pastilles des essais et la durée médiane, puis le total des pastilles ; enfin chaque réponse,
+    pour juger le fond."""
     by: dict[tuple[str, str], list[list[TurnResult]]] = {}
     for r in results:
-        runs = by.setdefault((r.scenario, r.model), [])
+        runs = by.setdefault((r.scenario, r.column), [])
         while len(runs) < r.run:
             runs.append([])
         runs[r.run - 1].append(r)
-    lines = ["| Question | " + " | ".join(models) + " |", "|---" * (len(models) + 1) + "|"]
+    lines = ["| Question | " + " | ".join(columns) + " |", "|---" * (len(columns) + 1) + "|"]
+    totals = {c: {"ok": 0, "mid": 0, "ko": 0} for c in columns}
     for scenario in SCENARIOS:
         cells = []
-        for model in models:
+        for model in columns:
             runs = by.get((scenario.key, model), [])
             if not runs:
                 cells.append("-")
                 continue
-            dots = "".join(DOTS[scenario_verdict(turns)] for turns in runs if turns)
+            verdicts = [scenario_verdict(turns) for turns in runs if turns]
+            for v in verdicts:
+                totals[model][v] += 1
+            dots = "".join(DOTS[v] for v in verdicts)
             # Durée de la question (premier tour), comme dans le comparatif.
             first = [turns[0].wall_s for turns in runs if turns]
             cells.append(f"{dots} {statistics.median(first):.1f} s")
         lines.append(f"| {scenario.key} | " + " | ".join(cells) + " |")
+    lines.append(
+        "| Total | "
+        + " | ".join(" ".join(f"{DOTS[v]} {totals[c][v]}" for v in DOTS) for c in columns)
+        + " |"
+    )
     lines += ["", "## Réponses", ""]
     for r in results:
         tools = ", ".join(
@@ -407,8 +565,8 @@ def summary(results: list[TurnResult], models: list[str]) -> str:
             for s in r.steps
         )
         lines += [
-            f"### {r.model} · {r.scenario} · essai {r.run} · tour {r.turn} "
-            f"{DOTS[r.verdict]} {r.wall_s:.1f} s",
+            f"### {r.column} · {r.scenario} · essai {r.run} · tour {r.turn} "
+            f"{DOTS[r.verdict]} {r.wall_s:.1f} s (dernier passage {r.last_s:.1f} s)",
             f"- Question : {r.text}",
             f"- Outils : {tools or 'aucun'}",
             f"- Réflexion : {r.thinking_chars} caractères ; jetons générés : {r.eval_count}",
@@ -430,6 +588,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--lang", default="fr")
     parser.add_argument("--prompt-file", type=Path, help="prompt système au lieu du conseillé")
+    parser.add_argument("--variants", type=Path, help="formulations à comparer (fichier JSON)")
     parser.add_argument("--out", type=Path, default=OUT)
     parser.add_argument(
         "--allow-requests", action="store_true", help="transmettre les demandes confirmées"
@@ -451,31 +610,41 @@ def main(argv: list[str] | None = None) -> int:
         if args.prompt_file
         else get_json(f"{base}/api/assistant/prompt?lang={args.lang}")["prompt"]
     )
-    bench = Bench(args.ollama, Mcp(f"{base}/mcp"), prompt, args.allow_requests)
+    bench = Bench(args.ollama, Mcp(f"{base}/mcp"), prompt, args.allow_requests, lang=args.lang)
+    variants = load_variants(args.variants) if args.variants else [CURRENT]
+    for variant in variants:
+        bench.use(variant)  # outil inconnu : erreur avant le premier tour
 
     args.out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log = args.out / f"{stamp}.jsonl"
     results: list[TurnResult] = []
+    columns: list[str] = []
     with log.open("w", encoding="utf-8") as out:
         for name in names:
             profile = profiles[name]
             print(f"{name} ({profile.model}) : chargement…", file=sys.stderr)
             bench.warm_up(profile)
+            # Variantes alternées à chaque essai : une dérive (charge du Nano, heure de la
+            # journée) touche toutes les variantes de la même façon.
             for run in range(1, args.runs + 1):
-                for scenario in scenarios:
-                    for r in bench.scenario(profile, scenario, run):
-                        results.append(r)
-                        line = {**r.__dict__, "steps": [s.__dict__ for s in r.steps]}
-                        out.write(json.dumps(line, ensure_ascii=False) + "\n")
-                        out.flush()
-                        print(
-                            f"  essai {run} · {scenario.key} · tour {r.turn} : "
-                            f"{DOTS[r.verdict]} {r.wall_s:.1f} s {', '.join(r.flags)}",
-                            file=sys.stderr,
-                        )
+                for variant in variants:
+                    bench.use(variant)
+                    for scenario in scenarios:
+                        for r in bench.scenario(profile, scenario, run):
+                            results.append(r)
+                            if r.column not in columns:
+                                columns.append(r.column)
+                            line = {**r.__dict__, "steps": [s.__dict__ for s in r.steps]}
+                            out.write(json.dumps(line, ensure_ascii=False) + "\n")
+                            out.flush()
+                            print(
+                                f"  essai {run} · {r.column} · {scenario.key} · tour {r.turn} : "
+                                f"{DOTS[r.verdict]} {r.wall_s:.1f} s {', '.join(r.flags)}",
+                                file=sys.stderr,
+                            )
     report = args.out / f"{stamp}.md"
-    report.write_text(summary(results, names) + "\n", encoding="utf-8")
+    report.write_text(summary(results, columns) + "\n", encoding="utf-8")
     print(f"Rapport : {report}\nDétail : {log}", file=sys.stderr)
     return 0
 

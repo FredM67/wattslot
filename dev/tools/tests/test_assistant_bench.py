@@ -91,6 +91,50 @@ def test_visible_defects_are_flagged() -> None:
     assert ab.verdict_of(["nom technique"]) == "mid" and ab.verdict_of([]) == "ok"
 
 
+def test_english_answers_are_flagged() -> None:
+    """Réponse en anglais, ou réflexion anglaise recopiée avant une réponse française."""
+    result = ab.TurnResult("17", 1, "qwen3", 1, 17, "Dans 10 jours ?")
+    result.answer = "I cannot provide a solar forecast for 10 days as no tool supports that."
+    assert "anglais" in ab.flags_of(result, frozenset())
+    assert "anglais" not in ab.flags_of(result, frozenset(), lang="en")
+    result.answer = (
+        "Now we have a question: the user wants it before tomorrow. Le meilleur moment est "
+        "demain à 13:00, pour un coût de 0,12 €. Veux-tu que je dépose la demande ?"
+    )
+    assert "anglais" in ab.flags_of(result, frozenset())
+    result.answer = "La batterie est à 8 %, elle se charge avec le surplus solaire de la journée."
+    assert "anglais" not in ab.flags_of(result, frozenset())
+
+
+def test_a_variant_replaces_descriptions_and_prompt(tmp_path: Path) -> None:
+    fake = Fake([reply("Rien."), reply("Rien.")])
+    b = bench(fake)
+    path = tmp_path / "v.json"
+    path.write_text(
+        json.dumps({"courte": {"tools": {"get_week": "Week."}, "prompt_append": "Sois bref."}})
+    )
+    current, short = ab.load_variants(path)
+    assert current is ab.CURRENT and short.name == "courte"
+    scenario = ab.Scenario("18", (ab._q(18, "Prix ?"),))
+    b.use(short)
+    (r,) = b.scenario(PROFILE, scenario, 1)
+    sent = fake.chats[-1]
+    assert sent["tools"][0]["function"]["description"] == "Week."
+    assert sent["messages"][0]["content"] == "Prompt.\nSois bref."
+    assert r.variant == "courte" and r.column == "qwen3 · courte" and r.last_s == 2.0
+    b.use(current)  # retour aux textes du serveur
+    (r,) = b.scenario(PROFILE, scenario, 1)
+    sent = fake.chats[-1]
+    assert sent["tools"][0]["function"]["description"] == "The next days."
+    assert sent["messages"][0]["content"] == "Prompt." and r.column == "qwen3"
+    try:
+        b.use(ab.Variant("faute", tools={"get_wek": "x"}))
+    except ValueError as error:
+        assert "get_wek" in str(error)
+    else:
+        raise AssertionError("outil inconnu accepté")
+
+
 def test_the_summary_gives_one_dot_per_run(tmp_path: Path) -> None:
     results = []
     for run, verdict in ((1, "ok"), (2, "mid")):
@@ -99,6 +143,7 @@ def test_the_summary_gives_one_dot_per_run(tmp_path: Path) -> None:
         results.append(r)
     text = ab.summary(results, ["qwen3"])
     assert "| 12 | 🟢🟠 2.5 s |" in text and "| 1 | - |" in text
+    assert "| Total | 🟢 1 🟠 1 🔴 0 |" in text
     assert "> Rien à signaler." in text
 
     profiles = tmp_path / "p.json"
