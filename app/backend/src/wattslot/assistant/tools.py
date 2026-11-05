@@ -551,20 +551,37 @@ async def get_energy(state: Any, day: str = "today") -> dict[str, Any]:
             "error": "no_data",
             "hint": "No measurement kept for this day, and no plan.",
         }
-    result: dict[str, Any] = {
-        "day": _when(wanted, today_of(state), language(state)),
-        "measured": measured or None,
+    lang = language(state)
+    today = today_of(state)
+    result: dict[str, Any] = {"day": _when(wanted, today, lang), "measured": measured or None}
+    if view is None:
+        return result
+    production = round(sum(h.production_kwh for h in view.hours), 2)
+    consumption = round(sum(h.consumption_kwh for h in view.hours), 2)
+    devices = {
+        row.device: round(sum(b.energy_kwh for b in row.planned), 2)
+        for row in view.timeline.rows
+        if row.kind != "battery"
     }
-    if view is not None:
+    if measured:
         result["planned"] = {
-            "production_kwh": round(sum(h.production_kwh for h in view.hours), 2),
-            "consumption_kwh": round(sum(h.consumption_kwh for h in view.hours), 2),
-            "devices": {
-                row.device: round(sum(b.energy_kwh for b in row.planned), 2)
-                for row in view.timeline.rows
-                if row.kind != "battery"
-            },
+            "production_kwh": production,
+            "consumption_kwh": consumption,
+            "devices": devices,
         }
+        return result
+    # Rien de mesuré (tôt le matin, ou sans HA) : en phrases, « prévu » collé aux chiffres. Avec
+    # les champs du plan à côté d'un « measured » vide, les quatre modèles du banc d'essai
+    # répondaient « la maison a consommé 9,69 kWh » à 0 h 30.
+    texts = catalog(lang)
+    result["measured"] = texts[
+        "assistant.no_measure_today" if wanted == today else "assistant.no_measure_day"
+    ]
+    result["planned"] = texts["assistant.planned_not_measured"].format(
+        consumption=number(consumption, lang, 2), production=number(production, lang, 2)
+    )
+    if devices:
+        result["planned_appliances_kwh"] = devices
     return result
 
 
@@ -614,25 +631,29 @@ async def _hourly_forecast(state: Any, day: Day) -> dict[str, Any]:
     when = _when(view.day, today_of(state), language(state))
     if not view.solar:  # maison sans installation solaire (lot 7.4)
         return {"day": when, "solar_installation": False, "production_kwh": 0}
+    lang = language(state)
     producing = [h for h in view.hours if h.production_kwh]
     peak = max(producing, key=lambda h: h.production_kwh, default=None)
+    kwh = round(view.weather.production_kwh, 1)
+    # Le résumé en une phrase, avant le détail : un modèle recopiait les onze heures une à une ;
+    # avec des champs « production_hours » et « peak_hour », qwen3 lisait les heures de
+    # production comme celles du maximum, et lfm3-rapide détaillait les heures sans le total.
+    summary = (
+        catalog(lang)["assistant.forecast_summary"].format(
+            kwh=number(kwh, lang, 1),
+            start=clock(producing[0].hour),
+            end=clock(producing[-1].hour + 1),
+            peak_start=clock(peak.hour),
+            peak_end=clock(peak.hour + 1),
+        )
+        if peak is not None
+        else None
+    )
     return {
         "day": when,
-        "production_kwh": round(view.weather.production_kwh, 1),
-        **(
-            {"weather": WEATHER[language(state)][view.weather.quality]}
-            if view.weather.quality
-            else {}
-        ),
-        # Le résumé avant le détail : un modèle recopiait les onze heures une à une.
-        **(
-            {
-                "production_hours": f"{clock(producing[0].hour)}-{clock(producing[-1].hour + 1)}",
-                "peak_hour": f"{clock(peak.hour)}-{clock(peak.hour + 1)}",
-            }
-            if peak is not None
-            else {}
-        ),
+        **({"summary": summary} if summary else {}),
+        "production_kwh": kwh,
+        **({"weather": WEATHER[lang][view.weather.quality]} if view.weather.quality else {}),
         "hourly_kwh": {f"{h.hour:02d}:00": round(h.production_kwh, 2) for h in producing},
     }
 

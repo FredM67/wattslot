@@ -234,21 +234,24 @@ def test_explain_device_finds_it_without_accents_or_dashes(api: TestClient) -> N
 
 def test_energy_forecast_home_status_and_problems(api: TestClient) -> None:
     # Sans HA, pas d'agrégats : seulement ce que prévoyait le plan de ce jour.
+    # Rien de mesuré : dit en toutes lettres, et le plan en phrase, « prévu » collé aux chiffres.
     energy = _call(api, "get_energy", {"day": "2025-10-15"})
-    assert energy["measured"] is None and energy["planned"]["production_kwh"] > 0
-    assert {"Lave-linge", "Sèche-linge"} <= set(energy["planned"]["devices"])
+    assert energy["measured"] == "Aucune mesure pour ce jour."
+    assert energy["planned"].startswith("Prévu sur la journée, rien de mesuré : consommation ")
+    assert {"Lave-linge", "Sèche-linge"} <= set(energy["planned_appliances_kwh"])
     assert _call(api, "get_energy", {"day": "2026-10-01"})["error"] == "no_data"
     assert _call(api, "get_energy", {"day": "hier"})["error"] == "invalid_date"
     assert _call(api, "get_energy", {"day": "2099-01-01"})["error"] == "invalid_date"
 
     forecast = _call(api, "get_forecast", {"day": "tomorrow"})
     assert forecast["production_kwh"] > 0 and "12:00" in forecast["hourly_kwh"]
-    # Le résumé avant le détail : heures de production et heure du maximum.
-    first, last = min(forecast["hourly_kwh"]), max(forecast["hourly_kwh"])
-    assert forecast["production_hours"].startswith(f"{first}-")
-    assert forecast["production_hours"] > f"{first}-{last}"
+    # Le résumé en phrase avant le détail : total, heures de production, heure du maximum.
+    first = min(forecast["hourly_kwh"])
     peak = max(forecast["hourly_kwh"], key=forecast["hourly_kwh"].get)
-    assert forecast["peak_hour"].startswith(f"{peak}-")
+    total = f"{forecast['production_kwh']:.1f}".replace(".", ",")
+    assert forecast["summary"].startswith(f"Production prévue : {total} kWh, de {first} à ")
+    assert f"pic entre {peak} et " in forecast["summary"]
+    assert list(forecast)[:2] == ["day", "summary"]
 
     home = _call(api, "get_home")
     assert home["objective"] == "le coût le plus bas" and home["tariff"] == "prix unique"
