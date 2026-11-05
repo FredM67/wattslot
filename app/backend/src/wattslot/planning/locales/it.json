@@ -56,6 +56,8 @@
   "assistant.yesterday": "ieri",
   "assistant.week_end": "Nessuna previsione oltre il {date}.",
   "assistant.no_other": "Nessun altro apparecchio previsto quel giorno.",
+  "assistant.off_now": "In questo momento: spento.",
+  "assistant.running_now": "In questo momento: in funzione ({power}).",
   "assistant.home_about": "Apparecchi della casa, non il piano del giorno: ciò che funziona un giorno è nel piano di quel giorno.",
   "assistant.period.off_peak": "fascia economica",
   "assistant.period.peak": "fascia di punta",

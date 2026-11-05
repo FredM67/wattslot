@@ -281,6 +281,8 @@ async def explain_device(state: Any, device: str, day: Day = "today") -> dict[st
             absent["appliances_this_day"] = _others(view, "", language(state))
         else:
             absent["other_appliances_this_day"] = _others(view, absent["device"], language(state))
+            if view.day == today_of(state) and (now := _power_now(state, absent["device"])):
+                absent["now"] = now
         return absent
     row = next((r for r in view.timeline.rows if r.device == name), None)
     status = next((s for s in view.timeline.statuses if s.device == name), None)
@@ -298,7 +300,38 @@ async def explain_device(state: Any, device: str, day: Day = "today") -> dict[st
     if explanation:
         found["why"] = explanation
     found["other_appliances_this_day"] = _others(view, name, language(state))
+    if view.day == today_of(state) and (now := _power_now(state, name)):
+        found["now"] = now
     return found
+
+
+def _power_now(state: Any, name: str) -> str | None:
+    """« En ce moment » d'un équipement : en marche (et sa puissance) ou à l'arrêt, d'après ses
+    capteurs de puissance ; rien sans HA ni capteur. À « pourquoi le chauffe-eau tourne ? » avec
+    seulement « pas prévu ce jour-là », les modèles du banc inventaient « activé manuellement »,
+    « démarré spontanément » ou « il tourne parce que rien n'est prévu »."""
+    if state.ingestor is None:
+        return None
+    home = home_model.load(state.graph)
+    device = next((d for d in home.devices if find_name(name, [d.name]) is not None), None)
+    if device is None:
+        return None
+    ids = {s.entity_id for s in device.sensors if s.role is Role.POWER_CONSUMED}
+    readings = [
+        e
+        for e in state.ingestor.status().entities
+        if e.entity_id in ids and e.last_value is not None and e.last_time is not None
+    ]
+    if not readings:
+        return None
+    now = datetime.now(UTC)
+    # HA n'envoie un relevé qu'au changement : une puissance figée depuis longtemps est un
+    # appareil à l'arrêt (0 W depuis des heures) ou un capteur muet, pas une marche en cours.
+    watts = sum(e.last_value for e in readings if now - e.last_time <= FRESH)
+    texts = catalog(language(state))
+    if watts >= RUNNING_W:
+        return texts["assistant.running_now"].format(power=f"{round(watts)} W")
+    return texts["assistant.off_now"]
 
 
 def _others(view: DayView, name: str, lang: str) -> list[dict[str, Any]] | str:
@@ -381,7 +414,13 @@ async def get_week(state: Any) -> dict[str, Any]:
             {
                 # En mots seulement : avec la date, un modèle comptait encore aujourd'hui, et
                 # une date au format brut était recopiée.
-                "when": _when(d.day, today, lang),
+                # Demain avec sa date : avec « demain » seul, trois profils du banc en
+                # déduisaient un faux jour (« Demain (jeu) » un jeudi).
+                "when": (
+                    f"{_when(d.day, today, lang)}, {long_date(d.day, lang)}"
+                    if d.day == today + timedelta(days=1)
+                    else _when(d.day, today, lang)
+                ),
                 "production_kwh": round(d.production_kwh, 1),
                 # La qualité en toutes lettres seulement : « sunny » était recopié tel quel.
                 **({"weather": WEATHER[lang][d.weather]} if d.weather else {}),
@@ -600,7 +639,17 @@ async def get_forecast(state: Any, day: str = "today") -> dict[str, Any]:
             "hint": f"Use today, tomorrow or YYYY-MM-DD; today is {today.isoformat()}.",
         }
     if wanted < today:
-        return {"error": "invalid_date", "hint": "The day is past: see get_energy."}
+        # La date du jour et la fin de la prévision : à « dans 10 jours », qwen3.5 demandait une
+        # date de 2025 ; renvoyé seulement vers l'énergie mesurée, il donnait celle d'août 2025.
+        past: dict[str, Any] = {
+            "error": "invalid_date",
+            "hint": f"{wanted.isoformat()} is past; today is {today.isoformat()}. "
+            "Measured energy of a past day: get_energy.",
+        }
+        week = await week_view_of(state, lang)
+        if week is not None and week.days:
+            past["forecast_end"] = _forecast_end(week.days[-1].day, lang)
+        return past
     if wanted > today + timedelta(days=1):
         return await _later_forecast(state, wanted, today, lang)
     return await _hourly_forecast(state, "today" if wanted == today else "tomorrow")

@@ -56,6 +56,8 @@
   "assistant.yesterday": "hier",
   "assistant.week_end": "Pas de prévision au-delà du {date}.",
   "assistant.no_other": "Aucun autre appareil prévu ce jour-là.",
+  "assistant.off_now": "En ce moment : à l'arrêt.",
+  "assistant.running_now": "En ce moment : en marche ({power}).",
   "assistant.home_about": "Équipements de la maison, pas le plan du jour : ce qui tourne un jour est dans le plan de ce jour.",
   "assistant.period.off_peak": "heures creuses",
   "assistant.period.peak": "heures pleines",

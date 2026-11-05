@@ -26,6 +26,7 @@ from wattslot.assistant.tools import (
     WEATHER,
     _max_hour,
     _next_action,
+    _power_now,
     _price_ranges,
     _when,
     clock,
@@ -134,7 +135,10 @@ def test_day_plan_and_week(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr("wattslot.assistant.tools.today_of", lambda _: first)
     week = _call(api, "get_week")
     assert week["today"] == long_date(first, "fr")
-    assert [d["when"] for d in week["days"]] == ["demain"]
+    # Demain avec sa date : « demain » seul faisait deviner un faux jour de la semaine.
+    assert [d["when"] for d in week["days"]] == [
+        f"demain, {long_date(days[1]['date_cible'], 'fr')}"
+    ]
     assert week["days"][0]["production_kwh"] > 0
     assert (
         week["forecast_end"]
@@ -149,7 +153,12 @@ def test_day_plan_and_week(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> 
     assert third["production_kwh"] > 0
     far = _call(api, "get_forecast", {"day": (first + timedelta(days=10)).isoformat()})
     assert "production_kwh" not in far and far["forecast_end"] == week["forecast_end"]
-    assert _call(api, "get_forecast", {"day": "2001-01-01"})["error"] == "invalid_date"
+    # Une date passée : la date du jour et la fin de la prévision (« dans 10 jours » demandé
+    # avec une année fausse).
+    past = _call(api, "get_forecast", {"day": "2001-01-01"})
+    assert past["error"] == "invalid_date"
+    assert f"today is {(first - timedelta(days=2)).isoformat()}" in past["hint"]
+    assert past["forecast_end"] == week["forecast_end"]
     assert _call(api, "get_forecast", {"day": "lundi"})["error"] == "invalid_date"
 
 
@@ -756,6 +765,42 @@ def test_current_status_says_what_powers_the_home(
     assert found["appliances_on"] == [{"device": "sensor.oven", "power_w": 2100}]
     local = (moment - timedelta(hours=0.1)).astimezone(ZoneInfo("Europe/Paris"))
     assert found["measured_at"] == local.strftime("%H:%M")  # heure locale
+
+
+def test_power_now_says_whether_the_appliance_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """« Pourquoi le chauffe-eau tourne ? » : en marche ou à l'arrêt, d'après sa puissance."""
+    home = HomeModel(
+        devices=[
+            HomeDevice(
+                key=key,
+                kind=DeviceKind.WATER_HEATER,
+                name=name,
+                sensors=[HomeSensor(entity_id=f"sensor.{key}", role=Role.POWER_CONSUMED)],
+            )
+            for key, name in (("heater", "Chauffe-eau"), ("idle", "Ballon"), ("old", "Cumulus"))
+        ]
+        + [HomeDevice(key="pool", kind=DeviceKind.POOL_PUMP, name="Piscine", sensors=[])]
+    )
+    monkeypatch.setattr("wattslot.assistant.tools.home_model.load", lambda _: home)
+    monkeypatch.setattr("wattslot.assistant.tools.language", lambda _: "fr")
+    moment = datetime.now(UTC)
+
+    def entity(name: str, value: float, age_h: float = 0.1) -> Any:
+        return SimpleNamespace(
+            entity_id=f"sensor.{name}",
+            role=Role.POWER_CONSUMED,
+            last_value=value,
+            last_time=moment - timedelta(hours=age_h),
+        )
+
+    entities = [entity("heater", 1800.4), entity("idle", 3), entity("old", 2000, age_h=5)]
+    ingestor = SimpleNamespace(status=lambda: SimpleNamespace(entities=entities))
+    state = SimpleNamespace(graph=None, ingestor=ingestor)
+    assert _power_now(state, "chauffe eau") == "En ce moment : en marche (1800 W)."
+    assert _power_now(state, "Ballon") == "En ce moment : à l'arrêt."  # veille
+    assert _power_now(state, "Cumulus") == "En ce moment : à l'arrêt."  # relevé figé
+    assert _power_now(state, "Piscine") is None  # sans capteur de puissance
+    assert _power_now(SimpleNamespace(graph=None, ingestor=None), "Chauffe-eau") is None
 
 
 def test_dynamic_prices_have_no_peak_hours() -> None:
