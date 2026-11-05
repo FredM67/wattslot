@@ -48,5 +48,8 @@
     "model": "lfm3:1.7b-q8_0",
     "think": false,
     "options": {"num_ctx": 16384, "temperature": 0.1, "top_k": 50, "repeat_penalty": 1.1}
-  }
+  },
+  "ministral-3": {"model": "ministral-3:3b", "options": {"num_ctx": 16384}},
+  "bonsai-2-9b": {"model": "bonsai-2:9b", "think": false, "options": {"num_ctx": 16384}},
+  "bonsai-2-9b-reflexion": {"model": "bonsai-2:9b", "think": true, "options": {"num_ctx": 16384}}
 }
