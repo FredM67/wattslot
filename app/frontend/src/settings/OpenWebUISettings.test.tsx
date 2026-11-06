@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "../i18n/I18nProvider";
-import OpenWebUISettings from "./OpenWebUISettings";
+import OpenWebUISettings, { OpenWebUITools } from "./OpenWebUISettings";
 
 type Calls = { url: string; method: string; body: Record<string, unknown> | null }[];
 
@@ -30,7 +30,8 @@ function mockApi(saved: { url: string | null; has_key: boolean }, test: () => Re
 function renderBlock(mode: "addon" | "standalone" = "standalone") {
   render(
     <I18nProvider>
-      <OpenWebUISettings mode={mode} />
+      <OpenWebUISettings />
+      <OpenWebUITools mode={mode} />
     </I18nProvider>,
   );
 }

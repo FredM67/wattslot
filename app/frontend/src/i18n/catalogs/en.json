@@ -540,26 +540,26 @@
       "failed": "Unable to save the currency."
     },
     "voice": {
-      "state": "Status",
-      "current": "Current setup",
-      "address": "Address of the app's MCP server:",
+      "address": "Address",
       "mcp": "MCP integration in Home Assistant",
       "mcp_none": "not installed",
-      "mcp_entry": "{title} ({state})",
       "mcp_states": {
         "loaded": "loaded",
         "error": "in error",
         "not_loaded": "not loaded"
       },
-      "home": "Home Assistant assistant",
-      "home_help": "The preferred assistant is the one Assist opens; its conversation agent answers the questions.",
+      "home": "Home Assistant Assist",
       "pipeline": "Preferred assistant",
       "agent": "Conversation agent",
       "no_pipeline": "No assistant in Home Assistant.",
       "not_connected": "Home Assistant is not connected: the assistant cannot be read or changed.",
       "saved": "Assistant changed in Home Assistant.",
       "invalid": "Home Assistant does not know this assistant or agent: reload the page.",
-      "failed": "Home Assistant refused the change, try again."
+      "failed": "Home Assistant refused the change, try again.",
+      "server": "MCP server",
+      "pipeline_help": "The one Assist opens",
+      "agent_help": "The model that answers the questions",
+      "setup_help": "The steps in Home Assistant"
     },
     "open_webui": {
       "title": "Open WebUI",
@@ -580,7 +580,9 @@
       "tools_server": "In Open WebUI: Admin Panel › Settings › External Tools › “+”, type MCP (Streamable HTTP), with the app's MCP server address above.",
       "tools_model": "Then Workspace › Models › edit the chosen model › Tools: tick the WattSlot server. Also paste the recommended prompt (Assistant page) into its system prompt if you want it by default.",
       "tools_addon": "As an add-on, the MCP server can only be reached by Home Assistant: in an Open WebUI installed elsewhere, the model answers without WattSlot's data (the Assistant page gives them to it).",
-      "tools_standalone": "Open WebUI must be able to reach the app's address on your local network."
+      "tools_standalone": "Open WebUI must be able to reach the app's address on your local network.",
+      "optional": "optional",
+      "tools_help": "To chat in Open WebUI itself"
     }
   },
   "connection_page": {

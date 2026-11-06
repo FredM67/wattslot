@@ -8,13 +8,16 @@ import { useI18n } from "../i18n/I18nProvider";
 import { mcpAddress, type Check, type Connection } from "./mcp";
 
 /** Adresse interne du serveur MCP, à copier ou à corriger (et à oublier pour revenir à celle
- * trouvée par l'application). */
+ * trouvée par l'application). `label` : ligne de réglage (sous-page « Assistant vocal »), ce
+ * libellé à gauche, l'adresse dessous, les boutons à droite. */
 export function McpAddress({
   connection,
   onChange,
+  label,
 }: {
   connection: Connection | null;
   onChange: (connection: Connection) => void;
+  label?: string;
 }) {
   const { t } = useI18n();
   const address = mcpAddress(connection);
@@ -34,7 +37,7 @@ export function McpAddress({
   if (editing !== null) {
     return (
       <form
-        className="assistant-address-form"
+        className={label ? "assistant-address-form ui-setting-row" : "assistant-address-form"}
         onSubmit={(event) => {
           event.preventDefault();
           void save(editing.trim());
@@ -57,6 +60,29 @@ export function McpAddress({
       </form>
     );
   }
+  const edit = (
+    <button type="button" onClick={() => setEditing(address ?? "http://")}>
+      {t("assistant.address.edit")}
+    </button>
+  );
+  if (label) {
+    return (
+      <div className="ui-setting-row">
+        <span>
+          <span className="ui-row-label">{label}</span>
+          {address ? (
+            <code className="ui-row-help assistant-address">{address}</code>
+          ) : (
+            <span className="ui-row-help">{t("assistant.address.unknown")}</span>
+          )}
+        </span>
+        <span className="settings-actions">
+          {address && <CopyButton text={address} label={t("assistant.copy_address")} />}
+          {edit}
+        </span>
+      </div>
+    );
+  }
   return (
     <p>
       {address ? (
@@ -66,9 +92,7 @@ export function McpAddress({
       ) : (
         <span className="dim">{t("assistant.address.unknown")}</span>
       )}{" "}
-      <button type="button" onClick={() => setEditing(address ?? "http://")}>
-        {t("assistant.address.edit")}
-      </button>
+      {edit}
     </p>
   );
 }

@@ -540,26 +540,26 @@
       "failed": "No se pudo guardar la moneda."
     },
     "voice": {
-      "state": "Estado",
-      "current": "Configuración actual",
-      "address": "Dirección del servidor MCP de la aplicación:",
+      "address": "Dirección",
       "mcp": "Integración MCP en Home Assistant",
       "mcp_none": "no instalada",
-      "mcp_entry": "{title} ({state})",
       "mcp_states": {
         "loaded": "cargada",
         "error": "con error",
         "not_loaded": "no cargada"
       },
-      "home": "Asistente de Home Assistant",
-      "home_help": "El asistente preferido es el que abre Assist; su agente de conversación responde a las preguntas.",
+      "home": "Assist de Home Assistant",
       "pipeline": "Asistente preferido",
       "agent": "Agente de conversación",
       "no_pipeline": "Ningún asistente en Home Assistant.",
       "not_connected": "Home Assistant no está conectado: el asistente no se puede leer ni modificar.",
       "saved": "Asistente modificado en Home Assistant.",
       "invalid": "Home Assistant no conoce este asistente o este agente: recargue la página.",
-      "failed": "Home Assistant rechazó el cambio, vuelva a intentarlo."
+      "failed": "Home Assistant rechazó el cambio, vuelva a intentarlo.",
+      "server": "Servidor MCP",
+      "pipeline_help": "El que abre Assist",
+      "agent_help": "El modelo que responde a las preguntas",
+      "setup_help": "Los pasos en Home Assistant"
     },
     "open_webui": {
       "title": "Open WebUI",
@@ -580,7 +580,9 @@
       "tools_server": "En Open WebUI: Panel de administración › Configuración › Herramientas externas › «+», tipo MCP (Streamable HTTP), con la dirección del servidor MCP de la aplicación indicada arriba.",
       "tools_model": "Después Espacio de trabajo › Modelos › editar el modelo elegido › Herramientas: marque el servidor de WattSlot. Pegue también el prompt recomendado (página Asistente) en su prompt de sistema si lo quiere por defecto.",
       "tools_addon": "Como complemento, el servidor MCP solo es accesible para Home Assistant: en un Open WebUI instalado en otro lugar, el modelo responde sin los datos de WattSlot (la página Asistente sí se los da).",
-      "tools_standalone": "Open WebUI debe poder alcanzar la dirección de la aplicación en su red local."
+      "tools_standalone": "Open WebUI debe poder alcanzar la dirección de la aplicación en su red local.",
+      "optional": "opcional",
+      "tools_help": "Para conversar en el propio Open WebUI"
     }
   },
   "connection_page": {

@@ -2743,3 +2743,132 @@ p[role="status"]:not(.state-message) {
 .react-flow__edge.graph-edge-dim {
   opacity: 0.2;
 }
+
+/* Sous-page « Assistant vocal » : carte d'état, puis listes de réglages comme les autres pages ;
+   les contrôles à droite passent sous leur libellé sur un écran étroit. */
+.voice-state {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.voice-state .status-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 20%, transparent);
+}
+
+.voice-state .status-dot[data-level="blocking"] {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 20%, transparent);
+}
+
+.voice-state-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-settings .ui-setting-row {
+  flex-wrap: wrap;
+}
+
+.voice-settings .ui-setting-row > :first-child {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.voice-settings .ui-setting-row select,
+.voice-settings .ui-setting-row input {
+  min-width: min(14rem, 100%);
+}
+
+.voice-settings .assistant-address-form {
+  justify-content: flex-start;
+}
+
+.voice-optional {
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.voice-pill {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  color: var(--ok);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.voice-pill[data-state="error"] {
+  color: var(--danger);
+}
+
+.voice-pill[data-state="not_loaded"] {
+  color: var(--text-dim);
+}
+
+.settings-note {
+  margin: 0.45rem 0.25rem 0;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.settings-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.7rem 0;
+}
+
+.settings-ok {
+  color: var(--ok);
+}
+
+.settings-danger {
+  color: var(--danger);
+}
+
+.voice-details {
+  display: block;
+}
+
+.voice-details > summary {
+  margin: 0;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.6rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.voice-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.voice-details > summary .icon {
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+
+.voice-details[open] > summary .icon {
+  transform: rotate(90deg);
+}
+
+.voice-details > :not(summary) {
+  font-size: 0.9rem;
+}

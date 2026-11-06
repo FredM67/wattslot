@@ -1,11 +1,15 @@
 // Bloc « Open WebUI » de la sous-page « Assistant vocal » : adresse et clé d'API pour discuter
-// avec un modèle d'Open WebUI depuis la page Assistant (/api/assistant/open-webui). La clé ne
-// revient jamais du serveur : la page sait seulement qu'il y en a une (« Clé enregistrée »).
+// avec un modèle d'Open WebUI depuis la page Assistant (/api/assistant/open-webui), en liste de
+// réglages. La clé ne revient jamais du serveur : la page sait seulement qu'il y en a une
+// (« Clé enregistrée »). `OpenWebUITools` : la ligne dépliable, rangée sous « Pour aller plus
+// loin », qui explique comment donner les outils de WattSlot à Open WebUI lui-même.
 
 import { useEffect, useState } from "react";
 
 import { ApiError, getJson, postJson, putJson } from "../api";
 import { useI18n } from "../i18n/I18nProvider";
+import Icon from "../ui/Icon";
+import { SettingList } from "../ui/SettingRow";
 
 interface OpenWebUIState {
   url: string | null;
@@ -20,7 +24,7 @@ function detailOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export default function OpenWebUISettings({ mode }: { mode: "addon" | "standalone" | null }) {
+export default function OpenWebUISettings() {
   const { t } = useI18n();
   const [saved, setSaved] = useState<OpenWebUIState | null>(null);
   const [url, setUrl] = useState("");
@@ -76,70 +80,121 @@ export default function OpenWebUISettings({ mode }: { mode: "addon" | "standalon
 
   return (
     <>
-      <h3 id="open-webui">{t("settings.open_webui.title")}</h3>
-      <p>{t("settings.open_webui.help")}</p>
-      <p>
-        <label htmlFor="open-webui-url">{t("settings.open_webui.url")}</label>{" "}
-        <input
-          id="open-webui-url"
-          type="url"
-          value={url}
-          placeholder="http://192.0.2.10:3000"
-          onChange={(event) => {
-            changed();
-            setUrl(event.target.value);
-          }}
-        />
-      </p>
-      {keyInput ? (
-        <p>
-          <label htmlFor="open-webui-key">{t("settings.open_webui.key")}</label>{" "}
+      <h3 id="open-webui" className="home-summary-heading">
+        {t("settings.open_webui.title")} <span className="voice-optional">· {t("settings.open_webui.optional")}</span>
+      </h3>
+      <SettingList>
+        <div className="ui-setting-row">
+          <span>
+            <label className="ui-row-label" htmlFor="open-webui-url">
+              {t("settings.open_webui.url")}
+            </label>
+            <span className="ui-row-help">{t("settings.open_webui.help")}</span>
+          </span>
           <input
-            id="open-webui-key"
-            type="password"
-            autoComplete="off"
-            value={key}
+            id="open-webui-url"
+            type="url"
+            value={url}
+            placeholder="http://192.0.2.10:3000"
             onChange={(event) => {
               changed();
-              setKey(event.target.value);
+              setUrl(event.target.value);
             }}
           />
-        </p>
-      ) : (
-        <p>
-          {t("settings.open_webui.key")} : {t("settings.open_webui.key_saved")}{" "}
-          <button type="button" onClick={() => setReplacing(true)}>
-            {t("settings.open_webui.replace")}
-          </button>{" "}
-          <button type="button" disabled={save === "saving"} onClick={() => void put(form({ api_key: null, clear_key: true }))}>
-            {t("settings.open_webui.clear")}
-          </button>
-        </p>
-      )}
-      <p>
-        <button type="button" disabled={test.status === "testing" || !url.trim()} onClick={() => void onTest()}>
-          {t(test.status === "testing" ? "settings.open_webui.testing" : "settings.open_webui.test")}
-        </button>{" "}
-        <button type="button" disabled={save === "saving"} onClick={() => void put(form())}>
-          {t("settings.save")}
-        </button>
-      </p>
-      {test.status === "ok" && <p role="status">{t("settings.open_webui.test_ok", { count: test.count })}</p>}
-      {test.status === "failed" && <p role="alert">{t("settings.open_webui.test_failed", { detail: test.detail })}</p>}
-      {save === "saved" && <p role="status">{t("settings.saved")}</p>}
-      {(save === "invalid" || save === "failed") && <p role="alert">{t(`settings.open_webui.${save}`)}</p>}
-
-      <details className="plan-more">
-        <summary>{t("settings.open_webui.tools")}</summary>
-        <p>{t("settings.open_webui.tools_page")}</p>
-        <ol>
-          <li>{t("settings.open_webui.tools_server")}</li>
-          <li>{t("settings.open_webui.tools_model")}</li>
-        </ol>
-        <p className="dim">
-          {t(mode === "addon" ? "settings.open_webui.tools_addon" : "settings.open_webui.tools_standalone")}
-        </p>
-      </details>
+        </div>
+        {keyInput ? (
+          <div className="ui-setting-row">
+            <label className="ui-row-label" htmlFor="open-webui-key">
+              {t("settings.open_webui.key")}
+            </label>
+            <input
+              id="open-webui-key"
+              type="password"
+              autoComplete="off"
+              value={key}
+              onChange={(event) => {
+                changed();
+                setKey(event.target.value);
+              }}
+            />
+          </div>
+        ) : (
+          <div className="ui-setting-row">
+            <span>
+              <span className="ui-row-label">{t("settings.open_webui.key")}</span>
+              <span className="ui-row-help">{t("settings.open_webui.key_saved")}</span>
+            </span>
+            <span className="settings-actions">
+              <button type="button" onClick={() => setReplacing(true)}>
+                {t("settings.open_webui.replace")}
+              </button>
+              <button
+                type="button"
+                className="ui-button-quiet settings-danger"
+                disabled={save === "saving"}
+                onClick={() => void put(form({ api_key: null, clear_key: true }))}
+              >
+                {t("settings.open_webui.clear")}
+              </button>
+            </span>
+          </div>
+        )}
+        <div className="settings-foot">
+          <span>
+            {test.status === "ok" && (
+              <span role="status" className="settings-ok">
+                {t("settings.open_webui.test_ok", { count: test.count })}
+              </span>
+            )}
+            {test.status === "failed" && (
+              <span role="alert">{t("settings.open_webui.test_failed", { detail: test.detail })}</span>
+            )}
+            {save === "saved" && test.status === "idle" && (
+              <span role="status" className="settings-ok">
+                {t("settings.saved")}
+              </span>
+            )}
+            {(save === "invalid" || save === "failed") && <span role="alert">{t(`settings.open_webui.${save}`)}</span>}
+          </span>
+          <span className="settings-actions">
+            <button type="button" disabled={test.status === "testing" || !url.trim()} onClick={() => void onTest()}>
+              {t(test.status === "testing" ? "settings.open_webui.testing" : "settings.open_webui.test")}
+            </button>
+            <button
+              type="button"
+              className="ui-button ui-button-primary"
+              disabled={save === "saving"}
+              onClick={() => void put(form())}
+            >
+              {t("settings.save")}
+            </button>
+          </span>
+        </div>
+      </SettingList>
     </>
+  );
+}
+
+/** Ligne dépliable : comment ajouter le serveur MCP de WattSlot dans Open WebUI lui-même. */
+export function OpenWebUITools({ mode }: { mode: "addon" | "standalone" | null }) {
+  const { t } = useI18n();
+  return (
+    <details className="ui-setting-row voice-details">
+      <summary>
+        <span>
+          <span className="ui-row-label">{t("settings.open_webui.tools")}</span>
+          <span className="ui-row-help">{t("settings.open_webui.tools_help")}</span>
+        </span>
+        <Icon name="chevron-right" size={18} />
+      </summary>
+      <p>{t("settings.open_webui.tools_page")}</p>
+      <ol>
+        <li>{t("settings.open_webui.tools_server")}</li>
+        <li>{t("settings.open_webui.tools_model")}</li>
+      </ol>
+      <p className="dim">
+        {t(mode === "addon" ? "settings.open_webui.tools_addon" : "settings.open_webui.tools_standalone")}
+      </p>
+    </details>
   );
 }

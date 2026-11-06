@@ -76,10 +76,12 @@ describe("sous-page « Assistant vocal »", () => {
 
     expect(await screen.findByText("Le serveur MCP répond : 9 outils.")).toBeInTheDocument();
     expect(screen.getByText(`${window.location.origin}/mcp`)).toBeInTheDocument();
-    expect(await screen.findByText(/Intégration MCP dans Home Assistant : WattSlot \(chargée\)/)).toBeInTheDocument();
+    expect(await screen.findByText("Intégration MCP dans Home Assistant")).toBeInTheDocument();
+    expect(screen.getByText("WattSlot")).toBeInTheDocument();
+    expect(screen.getByText("chargée")).toBeInTheDocument();
     expect(screen.getByLabelText("Assistant préféré")).toHaveValue("p1");
     expect(screen.getByLabelText("Agent de conversation")).toHaveValue("conversation.home_assistant");
-    expect(screen.getByRole("link", { name: "Brancher l'Assist pas à pas" })).toHaveAttribute("href", "#/assistant");
+    expect(screen.getByRole("link", { name: /Brancher l'Assist pas à pas/ })).toHaveAttribute("href", "#/assistant");
   });
 
   it("retient l'adresse interne vue du réseau local, et la laisse corriger", async () => {
