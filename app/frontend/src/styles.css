@@ -838,16 +838,6 @@ pre {
 }
 
 /* Réglages des notifications (lot 5.6). */
-.notification-rule {
-  margin: 0.75rem 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.notification-rule legend {
-  font-weight: 600;
-}
-
 /* Page « Assistant » (lot 6.3). */
 .assistant-address {
   word-break: break-all;
@@ -2744,8 +2734,8 @@ p[role="status"]:not(.state-message) {
   opacity: 0.2;
 }
 
-/* Sous-page « Assistant vocal » : carte d'état, puis listes de réglages comme les autres pages ;
-   les contrôles à droite passent sous leur libellé sur un écran étroit. */
+/* Sous-pages des Réglages en listes (« Assistant vocal », « Notifications ») : les contrôles à
+   droite passent sous leur libellé sur un écran étroit. « Assistant vocal » : carte d'état. */
 .voice-state {
   display: flex;
   align-items: center;
@@ -2769,21 +2759,21 @@ p[role="status"]:not(.state-message) {
   min-width: 0;
 }
 
-.voice-settings .ui-setting-row {
+.settings-page .ui-setting-row {
   flex-wrap: wrap;
 }
 
-.voice-settings .ui-setting-row > :first-child {
+.settings-page .ui-setting-row > :first-child {
   flex: 1 1 14rem;
   min-width: 0;
 }
 
-.voice-settings .ui-setting-row select,
-.voice-settings .ui-setting-row input {
+.settings-page .ui-setting-row select,
+.settings-page .ui-setting-row input {
   min-width: min(14rem, 100%);
 }
 
-.voice-settings .assistant-address-form {
+.settings-page .assistant-address-form {
   justify-content: flex-start;
 }
 
@@ -2840,11 +2830,11 @@ p[role="status"]:not(.state-message) {
   color: var(--danger);
 }
 
-.voice-details {
+.settings-details {
   display: block;
 }
 
-.voice-details > summary {
+.settings-details > summary {
   margin: 0;
   color: var(--text);
   display: flex;
@@ -2856,19 +2846,108 @@ p[role="status"]:not(.state-message) {
   list-style: none;
 }
 
-.voice-details > summary::-webkit-details-marker {
+.settings-details > summary::-webkit-details-marker {
   display: none;
 }
 
-.voice-details > summary .icon {
+.settings-details > summary .icon {
   color: var(--text-dim);
   transition: transform 0.15s;
 }
 
-.voice-details[open] > summary .icon {
+.settings-details[open] > summary .icon {
   transform: rotate(90deg);
 }
 
-.voice-details > :not(summary) {
+.settings-details > :not(summary) {
   font-size: 0.9rem;
+}
+
+.settings-intro {
+  margin: 0 0.25rem 0.25rem;
+}
+
+.settings-save {
+  margin-top: 0.75rem;
+}
+
+.settings-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.settings-page .settings-inline input {
+  min-width: 0;
+}
+
+/* Notifications : l'interrupteur, puis les options en résumé dépliable. */
+.notification-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.notification-item :is(.ui-switch-row, .ui-setting-row) {
+  border-bottom: 0;
+}
+
+.notification-options > summary {
+  min-height: 0;
+  padding: 0 0 0.7rem;
+  margin-top: -0.35rem;
+}
+
+.notification-options[open] {
+  padding-bottom: 0.2rem;
+}
+
+.notification-options .ui-setting-row,
+.notification-options .ui-switch-row {
+  min-height: 2.9rem;
+  padding: 0.3rem 0 0.3rem 0.9rem;
+  border-left: 2px solid var(--border);
+}
+
+.notification-options .settings-foot {
+  padding-left: 0.9rem;
+}
+
+.settings-times {
+  justify-content: flex-start;
+}
+
+.settings-page .settings-times > :first-child {
+  flex: 0 0 auto;
+}
+
+.settings-page .ui-setting-row > .settings-actions {
+  flex-shrink: 0;
+}
+
+.notification-options > summary {
+  justify-content: flex-start;
+  gap: 0.25rem;
+}
+
+.notification-options > summary .ui-row-help,
+.notification-options > summary .icon {
+  color: var(--link);
+}
+
+.settings-page .ui-setting-row > .settings-actions {
+  flex-wrap: nowrap;
+}
+
+.settings-page .settings-actions input {
+  width: 11rem;
+  min-width: 0;
+}
+
+.settings-page .ui-setting-row > .settings-actions-wrap {
+  flex-wrap: wrap;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.settings-page .ui-setting-row select {
+  max-width: 100%;
 }

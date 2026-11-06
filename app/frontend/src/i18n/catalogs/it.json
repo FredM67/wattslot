@@ -433,7 +433,7 @@
       "title": "Notifiche",
       "help": "Inviate da Home Assistant al dispositivo scelto (app companion) dopo ogni calcolo automatico. Niente è attivo per impostazione predefinita, per non duplicare la versione precedente finché invia notifiche.",
       "service": "Dispositivo comune",
-      "other": "Altro servizio di notifica:",
+      "other": "Altro servizio di notifica",
       "use": "Usa",
       "language": "Lingua del messaggio",
       "test": "Invia una prova",
@@ -458,7 +458,8 @@
       "quiet": {
         "label": "Ore di silenzio",
         "from": "dalle",
-        "to": "alle"
+        "to": "alle",
+        "summary": "silenzio dalle {start} alle {end}"
       },
       "kinds": {
         "recommendation": {
@@ -481,7 +482,11 @@
           "title": "La previsione di domani cala",
           "help": "La produzione prevista per domani cala di oltre il 30 % rispetto alla previsione più alta vista finora."
         }
-      }
+      },
+      "sending_title": "Invio",
+      "messages_title": "Messaggi",
+      "service_help": "Riceve le notifiche, salvo se un messaggio ha un dispositivo proprio",
+      "other_help": "Se non è nell'elenco"
     },
     "forecast": {
       "title": "Previsione solare di riserva",

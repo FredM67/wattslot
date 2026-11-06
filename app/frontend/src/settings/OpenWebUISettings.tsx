@@ -179,7 +179,7 @@ export default function OpenWebUISettings() {
 export function OpenWebUITools({ mode }: { mode: "addon" | "standalone" | null }) {
   const { t } = useI18n();
   return (
-    <details className="ui-setting-row voice-details">
+    <details className="ui-setting-row settings-details">
       <summary>
         <span>
           <span className="ui-row-label">{t("settings.open_webui.tools")}</span>

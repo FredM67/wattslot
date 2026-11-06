@@ -433,7 +433,7 @@
       "title": "Notifications",
       "help": "Envoyées par Home Assistant à l'appareil choisi (application compagnon), après chaque calcul automatique. Rien n'est activé par défaut, pour ne pas doubler l'ancienne version tant qu'elle notifie.",
       "service": "Appareil commun",
-      "other": "Autre service de notification :",
+      "other": "Autre service de notification",
       "use": "Utiliser",
       "language": "Langue du message",
       "test": "Envoyer un essai",
@@ -458,7 +458,8 @@
       "quiet": {
         "label": "Heures de silence",
         "from": "de",
-        "to": "à"
+        "to": "à",
+        "summary": "silence de {start} à {end}"
       },
       "kinds": {
         "recommendation": {
@@ -481,7 +482,11 @@
           "title": "Prévision de demain en baisse",
           "help": "La production prévue pour demain baisse de plus de 30 % par rapport à la prévision la plus haute vue jusque-là."
         }
-      }
+      },
+      "sending_title": "Envoi",
+      "messages_title": "Messages",
+      "service_help": "Reçoit les notifications, sauf appareil propre à un message",
+      "other_help": "S'il n'est pas dans la liste"
     },
     "forecast": {
       "title": "Prévision solaire de repli",

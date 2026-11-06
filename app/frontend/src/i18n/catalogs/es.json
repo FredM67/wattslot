@@ -433,7 +433,7 @@
       "title": "Notificaciones",
       "help": "Enviadas por Home Assistant al dispositivo elegido (aplicación complementaria) tras cada cálculo automático. Nada está activado por defecto, para no duplicar la versión anterior mientras siga notificando.",
       "service": "Dispositivo común",
-      "other": "Otro servicio de notificación:",
+      "other": "Otro servicio de notificación",
       "use": "Usar",
       "language": "Idioma del mensaje",
       "test": "Enviar una prueba",
@@ -458,7 +458,8 @@
       "quiet": {
         "label": "Horas de silencio",
         "from": "de",
-        "to": "a"
+        "to": "a",
+        "summary": "silencio de {start} a {end}"
       },
       "kinds": {
         "recommendation": {
@@ -481,7 +482,11 @@
           "title": "La previsión de mañana baja",
           "help": "La producción prevista para mañana baja más de un 30 % respecto a la previsión más alta vista hasta ahora."
         }
-      }
+      },
+      "sending_title": "Envío",
+      "messages_title": "Mensajes",
+      "service_help": "Recibe las notificaciones, salvo si un mensaje tiene su propio dispositivo",
+      "other_help": "Si no está en la lista"
     },
     "forecast": {
       "title": "Previsión solar de respaldo",

@@ -181,12 +181,16 @@ function SettingsForm({ page }: { page: "notifications" | "calculation" }) {
   ];
 
   return (
-    <section aria-labelledby="settings-page-title">
+    <section className="settings-page" aria-labelledby="settings-page-title">
       {/* Titre de la barre du haut, repris pour l'ordre des titres de la page. */}
       <h2 id="settings-page-title" className="visually-hidden">
         {t(page === "notifications" ? "nav.notifications" : "nav.calculation")}
       </h2>
-      {!choices.connected && <p role="status">{t("settings.not_connected")}</p>}
+      {!choices.connected && (
+        <p role="status" className="settings-note">
+          {t("settings.not_connected")}
+        </p>
+      )}
       {page === "calculation" && <p>{t("settings.intro")}</p>}
 
       {page === "notifications" && (
@@ -266,13 +270,19 @@ function SettingsForm({ page }: { page: "notifications" | "calculation" }) {
         </>
       )}
 
-      <p>
-        <button type="button" disabled={save === "saving"} onClick={() => void onSave()}>
+      <div className="settings-foot settings-save">
+        <span>
+          {save === "saved" && (
+            <span role="status" className="settings-ok">
+              {t("settings.saved")}
+            </span>
+          )}
+          {(save === "invalid" || save === "failed") && <span role="alert">{t(`settings.${save}`)}</span>}
+        </span>
+        <button type="button" className="ui-button ui-button-primary" disabled={save === "saving"} onClick={() => void onSave()}>
           {t("settings.save")}
         </button>
-      </p>
-      {save === "saved" && <p role="status">{t("settings.saved")}</p>}
-      {(save === "invalid" || save === "failed") && <p role="alert">{t(`settings.${save}`)}</p>}
+      </div>
     </section>
   );
 }
