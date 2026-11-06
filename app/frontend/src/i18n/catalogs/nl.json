@@ -535,7 +535,10 @@
           "name": "Schemering",
           "help": "Donker, paars en koraal"
         }
-      }
+      },
+      "region_title": "Taal en valuta",
+      "charts_title": "Grafieken",
+      "language_help": "Die van de interface, op dit apparaat"
     },
     "currency": {
       "label": "Valuta",

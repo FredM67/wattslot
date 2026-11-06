@@ -535,7 +535,10 @@
           "name": "Crepuscolo",
           "help": "Scuro, viola e corallo"
         }
-      }
+      },
+      "region_title": "Lingua e valuta",
+      "charts_title": "Grafici",
+      "language_help": "Quella dell'interfaccia, su questo dispositivo"
     },
     "currency": {
       "label": "Valuta",

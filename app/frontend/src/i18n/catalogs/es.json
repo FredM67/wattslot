@@ -535,7 +535,10 @@
           "name": "Crepúsculo",
           "help": "Oscuro, violeta y coral"
         }
-      }
+      },
+      "region_title": "Idioma y moneda",
+      "charts_title": "Gráficos",
+      "language_help": "El de la interfaz, en este dispositivo"
     },
     "currency": {
       "label": "Moneda",

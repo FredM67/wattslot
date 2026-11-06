@@ -535,7 +535,10 @@
           "name": "Dusk",
           "help": "Dark, purple and coral"
         }
-      }
+      },
+      "region_title": "Language and currency",
+      "charts_title": "Charts",
+      "language_help": "The interface language, on this device"
     },
     "currency": {
       "label": "Currency",

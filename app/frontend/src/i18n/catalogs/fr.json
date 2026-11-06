@@ -535,7 +535,10 @@
           "name": "Crépuscule",
           "help": "Sombre, violet et corail"
         }
-      }
+      },
+      "region_title": "Langue et devise",
+      "charts_title": "Graphiques",
+      "language_help": "Celle de l'interface, sur cet appareil"
     },
     "currency": {
       "label": "Devise",
