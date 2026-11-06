@@ -29,6 +29,7 @@ from wattslot.assistant.tools import (
     _next_action,
     _power_now,
     _price_ranges,
+    _summary,
     _when,
     clock,
     day_of,
@@ -124,7 +125,9 @@ def test_day_plan_and_week(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> 
     assert "Lave-linge : 11h" in plan["recommendation"]  # en français, la langue réglée
     assert plan["summary"]["production_kwh"] > 0
     # La batterie en phrase : « battery_end_of_day_percent » était lu « se charge à 12 % ».
-    assert plan["summary"]["battery"].startswith("La batterie monte au plus à ")
+    assert plan["summary"]["battery"].startswith(
+        ("La batterie monte au plus à ", "La batterie part de ")
+    )
     assert not any(k.startswith("battery_") for k in plan["summary"])
     assert "next_appliance" in plan  # selon l'heure : le prochain appareil, ou aucun
     # « Combien va me coûter la journée ? » : le coût, écrit dans la devise de la maison.
@@ -588,8 +591,8 @@ def test_other_days_say_what_today_means_and_the_maximum_is_an_hour_range(api: T
     today = _call(api, "get_day_plan", {"day": "today"})
     tomorrow = _call(api, "get_day_plan", {"day": "tomorrow"})
     assert "note" not in today and "note" not in tomorrow
-    at = today["summary"]["battery"].split("(")[1].split(")")[0]
-    assert "-" in at or at == "00:00"
+    battery = today["summary"]["battery"]
+    assert "(" not in battery if battery.startswith("La batterie part de ") else "-" in battery
     assert _max_hour(15) == "14:00-15:00" and _max_hour(0) == "00:00"
 
 
@@ -834,3 +837,27 @@ def test_energy_texts_follow_the_language() -> None:
         "devices": {"Lave-linge": "1,50\u00a0kWh"},
     }
     assert _energy_texts(values, "en")["production_kwh"] == "0.89\u00a0kWh"
+
+
+@pytest.mark.parametrize(
+    ("hour", "expected"),
+    [
+        (
+            12,
+            "La batterie monte au plus à 90\u00a0% (11:00-12:00) et finit la journée à 20\u00a0%.",
+        ),
+        # Au plus haut dès minuit : elle ne monte pas, elle part de ce niveau.
+        (0, "La batterie part de 90\u00a0% et finit la journée à 20\u00a0%."),
+    ],
+)
+def test_battery_of_the_day_in_a_sentence(hour: int, expected: str) -> None:
+    summary = SimpleNamespace(
+        production_kwh=1.0,
+        grid_import_kwh=2.0,
+        grid_export_kwh=0.0,
+        soc_max_percent=90.0,
+        soc_max_hour=hour,
+        soc_end_percent=20.0,
+    )
+    view = SimpleNamespace(summary=summary, battery_capacity_kwh=5.0, indicators=None)
+    assert _summary(view, "fr")["battery"] == expected  # type: ignore[arg-type]

@@ -60,6 +60,7 @@
   "assistant.running_now": "En ce moment : en marche ({power}).",
   "assistant.battery_end_of_day": "La batterie finit la journée à {percent}.",
   "assistant.battery_day": "La batterie monte au plus à {max} ({at}) et finit la journée à {end}.",
+  "assistant.battery_day_from_start": "La batterie part de {max} et finit la journée à {end}.",
   "assistant.home_about": "Équipements de la maison, pas le plan du jour : ce qui tourne un jour est dans le plan de ce jour.",
   "assistant.period.off_peak": "heures creuses",
   "assistant.period.peak": "heures pleines",

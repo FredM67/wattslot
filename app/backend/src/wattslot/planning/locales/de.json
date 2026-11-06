@@ -60,6 +60,7 @@
   "assistant.running_now": "Gerade: in Betrieb ({power}).",
   "assistant.battery_end_of_day": "Die Batterie beendet den Tag bei {percent}.",
   "assistant.battery_day": "Die Batterie steigt höchstens auf {max} ({at}) und beendet den Tag bei {end}.",
+  "assistant.battery_day_from_start": "Die Batterie startet bei {max} und beendet den Tag bei {end}.",
   "assistant.home_about": "Geräte des Hauses, nicht der Tagesplan: Was an einem Tag läuft, steht im Plan dieses Tages.",
   "assistant.period.off_peak": "Niedertarifzeit",
   "assistant.period.peak": "Hochtarifzeit",

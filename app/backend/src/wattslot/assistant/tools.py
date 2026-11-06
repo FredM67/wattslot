@@ -148,7 +148,10 @@ def _summary(view: DayView, lang: str) -> dict[str, Any]:
         # En phrase : avec « battery_end_of_day_percent », qwen3 écrivait encore « la batterie se
         # charge à 12 % à la fin de la journée » (banc du 06/11) ; avant ce nom, « la batterie est
         # à 10 % » était lu comme le niveau actuel.
-        found["battery"] = catalog(lang)["assistant.battery_day"].format(
+        # Maximum dès minuit : « part de », sans heure ; avec « monte au plus à 14 % (00:00) »,
+        # qwen3 disait « la batterie monte jusqu'à 14 % » alors qu'elle ne fait que descendre.
+        key = "assistant.battery_day" if s.soc_max_hour > 0 else "assistant.battery_day_from_start"
+        found["battery"] = catalog(lang)[key].format(
             max=_percent(s.soc_max_percent, lang),
             at=_max_hour(s.soc_max_hour),
             end=_percent(s.soc_end_percent, lang),
