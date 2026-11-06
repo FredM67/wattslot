@@ -81,7 +81,9 @@ Then open `http://<host>:8100`:
 **Verifying the image**: versions published after 0.9.5 are signed with [Cosign](https://docs.sigstore.dev/), without a key: the signature proves that the image was published by WattSlot's release workflow on GitHub. To check a version (here `X.Y.Z`):
 
 ```bash
-cosign verify ghcr.io/jmcruvellier/wattslot:X.Y.Z   --certificate-identity "https://github.com/jmcruvellier/wattslot/.github/workflows/release.yml@refs/tags/vX.Y.Z"   --certificate-oidc-issuer https://token.actions.githubusercontent.com
+cosign verify ghcr.io/jmcruvellier/wattslot:X.Y.Z \
+  --certificate-identity "https://github.com/jmcruvellier/wattslot/.github/workflows/release.yml@refs/tags/vX.Y.Z" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 Home Assistant does not check signatures yet; this is for those who want to verify by hand.
