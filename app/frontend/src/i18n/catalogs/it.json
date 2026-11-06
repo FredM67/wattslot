@@ -577,9 +577,10 @@
       "invalid": "Indirizzo non valido: inizia con http:// o https://.",
       "failed": "Salvataggio non riuscito, riprova.",
       "tools": "Dare i dati di WattSlot a Open WebUI",
+      "tools_page": "La pagina Assistente fornisce da sé i dati di WattSlot al modello scelto: non c'è niente da configurare. Per conversare in Open WebUI stesso:",
       "tools_server": "In Open WebUI: Pannello di amministrazione › Impostazioni › Strumenti esterni › «+», tipo MCP (Streamable HTTP), con l'indirizzo del server MCP dell'app indicato sopra.",
       "tools_model": "Poi Area di lavoro › Modelli › modifica il modello scelto › Strumenti: spunta il server di WattSlot. Incolla anche il prompt consigliato (pagina Assistente) nel suo prompt di sistema se lo vuoi come predefinito.",
-      "tools_addon": "Come componente aggiuntivo, il server MCP è raggiungibile solo da Home Assistant: un Open WebUI installato altrove non può usarlo. Il modello risponde allora senza i dati di WattSlot.",
+      "tools_addon": "Come componente aggiuntivo, il server MCP è raggiungibile solo da Home Assistant: in un Open WebUI installato altrove, il modello risponde senza i dati di WattSlot (la pagina Assistente invece glieli fornisce).",
       "tools_standalone": "Open WebUI deve poter raggiungere l'indirizzo dell'app sulla tua rete locale."
     }
   },
