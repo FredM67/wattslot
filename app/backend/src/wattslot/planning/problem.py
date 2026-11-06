@@ -36,6 +36,7 @@ from wattslot.planning.cycles import (
     remaining_hourly,
 )
 from wattslot.planning.inputs import FrozenCycle, PlanningInput, Runtime
+from wattslot.planning.plan import Reason
 from wattslot.planning.reference import REFERENCE, Reference, task_key
 from wattslot.runtime_settings import season
 from wattslot.time_constraints import TimeConstraint
@@ -86,6 +87,8 @@ class LaunchedCycle:
     start: datetime
     end_hour: int
     end_min: int
+    # Raisons de son placement dans le plan précédent (« passé gelé ») : gardées après « lancé ».
+    planned: tuple[Reason, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -374,6 +377,7 @@ def from_input(data: PlanningInput, reference: Reference = REFERENCE) -> Problem
                         start=start,
                         end_hour=max(start.hour + 1, launched_end_hours[request.name]),
                         end_min=max(start.hour * 60 + start.minute, ends[task_key(request.name)]),
+                        planned=data.planned_reasons.get(request.name, ()),
                     )
                 )
                 continue

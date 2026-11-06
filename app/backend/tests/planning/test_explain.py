@@ -1,18 +1,19 @@
 """Explications du plan (lot 3.7) : chaque élément du plan de la maison de référence a la sienne,
 en français et en anglais ; alternative chiffrée des cycles."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from tests.v1_oracle import STATES, load
+from tests.v1_oracle import STATES, load, state_named
 from wattslot import currency, profiles
 from wattslot.languages import LANGUAGES
 from wattslot.planning.assemble import configured
 from wattslot.planning.engine import Objective, load_kwh, plan_day
 from wattslot.planning.explain import catalog, render, solar_percent
 from wattslot.planning.inputs import from_v1
-from wattslot.planning.plan import Alternative, Explanation, Reason, Slot
+from wattslot.planning.plan import Alternative, Explanation, Plan, Reason, Slot
 from wattslot.planning.problem import from_input
 
 REFERENCE = profiles.load("reference")
@@ -75,6 +76,30 @@ def test_a_cycle_explains_its_solar_share_and_its_order() -> None:
             share = next(r for r in reasons if r.code == "solar_share")
             assert share.params == {"percent": solar}
         assert ("after" in codes) == (tasks[name].depends_on is not None), name
+
+
+def test_a_launched_cycle_keeps_the_reasons_of_its_placement() -> None:
+    """Journée 02, chauffe-eau lancé : sans plan précédent, « Lancé à » seul ; avec les raisons
+    de son placement dans le plan précédent, elles suivent le démarrage réel."""
+    data = from_v1(load(state_named("today_h12_water_heater"))[0])
+    alone = plan_day(from_input(data)).day
+    planned = (
+        Reason(code="solar_share", params={"percent": 80}),
+        Reason(code="cheap_hours", params={"price": 0.138}),
+    )
+    kept = plan_day(from_input(replace(data, planned_reasons={"Chauffe-eau": planned}))).day
+
+    def reasons(day: Plan) -> list[str]:
+        slot = next(i for i in day.items if isinstance(i, Slot) and i.device == "Chauffe-eau")
+        assert slot.explanation is not None
+        return [r.code for r in slot.explanation.reasons]
+
+    assert reasons(alone) == ["launched"]
+    assert reasons(kept) == ["launched", "solar_share", "cheap_hours"]
+    slot = next(i for i in kept.items if isinstance(i, Slot) and i.device == "Chauffe-eau")
+    assert slot.justification is not None
+    assert slot.justification.startswith("Lancé à ")
+    assert "80 % de son énergie vient du surplus solaire." in slot.justification
 
 
 def test_rendering_in_each_language() -> None:

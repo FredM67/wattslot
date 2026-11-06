@@ -11,7 +11,7 @@ from typing import Any
 
 from wattslot.planning.co2_sources import Co2Context
 from wattslot.planning.cycles import Segment, Shape
-from wattslot.planning.plan import POOL
+from wattslot.planning.plan import POOL, Reason
 from wattslot.tariff import V1 as V1_TARIFF
 from wattslot.tariff import Tariff, TariffContext
 from wattslot.time_constraints import TimeConstraint
@@ -146,6 +146,9 @@ class PlanningInput:
     daily_profiles: Mapping[str, DailyProfile | None] = field(default_factory=dict)
     profile_status: Mapping[str, str] = field(default_factory=dict)  # pour les avertissements
     frozen: tuple[FrozenCycle, ...] = ()
+    # Raisons du placement de chaque appareil dans le plan précédent de la journée (sans
+    # « lancé ») : un cycle lancé les garde, au lieu du seul « Lancé à 9h59 ».
+    planned_reasons: Mapping[str, tuple[Reason, ...]] = field(default_factory=dict)
     real_segments: Mapping[str, tuple[Segment, ...]] = field(default_factory=dict)
     real_updated_at: datetime | None = None
     # Durées de fonctionnement à placer (lot 3.4) ; la filtration de la v1 par défaut.
