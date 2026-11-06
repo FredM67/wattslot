@@ -442,7 +442,8 @@
         "no_notify_service": "Wählen Sie zuerst ein Gerät.",
         "no_plan": "Noch kein Tagesplan: Der Test sendet dessen Empfehlung. Berechnen Sie den Plan auf der Startseite.",
         "not_connected": "Home Assistant ist nicht verbunden.",
-        "failed": "Das Senden ist fehlgeschlagen: Prüfen Sie den Dienst in Home Assistant."
+        "failed": "Das Senden ist fehlgeschlagen: Prüfen Sie den Dienst in Home Assistant.",
+        "no_week": "Noch kein Wochenplan: Berechnen Sie den Plan auf der Startseite."
       },
       "own_service": "Gerät",
       "common_service": "das gemeinsame Gerät",
@@ -480,12 +481,19 @@
         "forecast_drop": {
           "title": "Prognose für morgen sinkt",
           "help": "Die für morgen geplante Erzeugung sinkt um mehr als 30 % gegenüber der höchsten bisher gesehenen Prognose."
+        },
+        "week": {
+          "title": "Wochenplan",
+          "help": "Die für die kommenden Tage geplanten Geräte, Tag für Tag, an den gewählten Tagen gesendet. Über zwei oder drei Tage hinaus folgt der Plan einer noch unsicheren Wetterprognose und kann sich ändern."
         }
       },
       "sending_title": "Versand",
       "messages_title": "Nachrichten",
       "service_help": "Erhält die Benachrichtigungen, außer eine Nachricht hat ein eigenes Gerät",
-      "other_help": "Falls es nicht in der Liste steht"
+      "other_help": "Falls es nicht in der Liste steht",
+      "week": {
+        "days": "Sendetage"
+      }
     },
     "forecast": {
       "title": "Ersatz-Solarprognose",

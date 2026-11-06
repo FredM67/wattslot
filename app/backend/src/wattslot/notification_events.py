@@ -11,16 +11,22 @@ heures de silence et l'appareil sont l'affaire de ``notifications``.
 - Batterie pleine avant midi : le plan prévoit 100 % avant 12 h, et cette heure est à venir.
 - Prévision de demain qui chute : la production prévue pour demain a baissé de plus de 30 % par
   rapport à la plus haute prévision vue pour ce jour.
+
+Le planning de la semaine (``week``) n'a pas de condition : c'est un texte, une ligne par jour à
+venir de la vue Semaine, envoyé les jours choisis (``notifications``).
 """
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from wattslot.languages import number
+from wattslot.planning.warning_texts import catalog as warning_catalog
+from wattslot.planning.warning_texts import hour_minutes, long_date
 from wattslot.views.day import build_day
 from wattslot.views.display import BATTERY, Context, find_item
+from wattslot.views.week import WeekView
 
 LATE_MIN = 30  # cycle prévu non lancé passé ce délai : écart au plan
 FULL_PERCENT = 99.5  # « pleine », aux arrondis de la simulation près
@@ -50,6 +56,11 @@ TEXTS: dict[str, dict[str, str]] = {
             "prévus plus tôt ({gap} %)."
         ),
         "test": "[Essai] {message}",
+        "week.title": "Planning de la semaine",
+        "week.day": "{day} : {devices}",
+        "week.device": "{device} {start}\u2013{end}",
+        "week.nothing": "rien à lancer",
+        "week.until": "Pas de prévision au-delà du {date}.",
     },
     "en": {
         "device_now.title": "Start now",
@@ -73,6 +84,11 @@ TEXTS: dict[str, dict[str, str]] = {
             "forecast earlier ({gap} %)."
         ),
         "test": "[Test] {message}",
+        "week.title": "This week's plan",
+        "week.day": "{day}: {devices}",
+        "week.device": "{device} {start}\u2013{end}",
+        "week.nothing": "nothing to start",
+        "week.until": "No forecast beyond {date}.",
     },
     # Allemand, néerlandais, espagnol, italien : préparés puis « à relire » (lot 5.7).
     "de": {
@@ -97,6 +113,11 @@ TEXTS: dict[str, dict[str, str]] = {
             "zuvor prognostiziert ({gap} %)."
         ),
         "test": "[Test] {message}",
+        "week.title": "Wochenplan",
+        "week.day": "{day}: {devices}",
+        "week.device": "{device} {start}\u2013{end}",
+        "week.nothing": "nichts zu starten",
+        "week.until": "Keine Prognose über {date} hinaus.",
     },
     "nl": {
         "device_now.title": "Nu starten",
@@ -120,6 +141,11 @@ TEXTS: dict[str, dict[str, str]] = {
             "eerder voorspeld ({gap} %)."
         ),
         "test": "[Test] {message}",
+        "week.title": "Weekplanning",
+        "week.day": "{day}: {devices}",
+        "week.device": "{device} {start}\u2013{end}",
+        "week.nothing": "niets te starten",
+        "week.until": "Geen prognose na {date}.",
     },
     "es": {
         "device_now.title": "Póngalo ahora",
@@ -143,6 +169,11 @@ TEXTS: dict[str, dict[str, str]] = {
             "previstos antes ({gap} %)."
         ),
         "test": "[Prueba] {message}",
+        "week.title": "Planificación de la semana",
+        "week.day": "{day}: {devices}",
+        "week.device": "{device} {start}\u2013{end}",
+        "week.nothing": "nada que poner",
+        "week.until": "Sin previsión más allá del {date}.",
     },
     "it": {
         "device_now.title": "Da avviare ora",
@@ -166,6 +197,11 @@ TEXTS: dict[str, dict[str, str]] = {
             "previsti prima ({gap} %)."
         ),
         "test": "[Prova] {message}",
+        "week.title": "Programma della settimana",
+        "week.day": "{day}: {devices}",
+        "week.device": "{device} {start}\u2013{end}",
+        "week.nothing": "niente da avviare",
+        "week.until": "Nessuna previsione oltre {date}.",
     },
 }
 
@@ -319,3 +355,52 @@ def forecast_drop(
             ),
         )
     ]
+
+
+def _short_date(day: date, lang: str) -> str:
+    """« Lundi 9 Novembre », « Monday, November 9 » : format des catalogues des avertissements."""
+    names: dict[str, str] = warning_catalog(lang)["date"]
+    return names["format_sans_annee"].format(
+        jour=names[f"jour_{day.weekday()}"], num=day.day, mois=names[f"mois_{day.month}"]
+    )
+
+
+def week(view: WeekView, local: datetime, lang: str) -> str | None:
+    """Planning de la semaine : une ligne par jour à venir, ses appareils et leurs heures.
+    Aujourd'hui, seulement les cycles pas encore commencés, et pas de ligne s'il n'en reste
+    aucun ; ``None`` sans aucun jour à venir. Un horizon arrêté plus tôt est signalé."""
+    today = local.date()
+    now_min = local.hour * 60 + local.minute
+    lines: list[str] = []
+    for found in view.days:
+        devices = sorted(found.devices, key=lambda d: d.start_min)
+        if found.day < today:
+            continue
+        if found.day == today:
+            devices = [d for d in devices if d.start_min > now_min]
+            if not devices:
+                continue
+        listed = ", ".join(
+            text(
+                lang,
+                "week.device",
+                device=d.device,
+                start=hour_minutes(d.start_min, lang),
+                end=hour_minutes(d.end_min, lang),
+            )
+            for d in devices
+        )
+        lines.append(
+            text(
+                lang,
+                "week.day",
+                day=_short_date(found.day, lang),
+                devices=listed or text(lang, "week.nothing"),
+            )
+        )
+    if not lines:
+        return None
+    if view.missing_days:
+        last = min(view.missing_days) - timedelta(days=1)
+        lines.append(text(lang, "week.until", date=long_date(last, lang)))
+    return "\n".join(lines)

@@ -442,7 +442,8 @@
         "no_notify_service": "Choose a device first.",
         "no_plan": "No plan for today yet: the test sends its recommendation. Compute the plan from the home page.",
         "not_connected": "Home Assistant is not connected.",
-        "failed": "Sending failed: check the service in Home Assistant."
+        "failed": "Sending failed: check the service in Home Assistant.",
+        "no_week": "No plan for the week yet: compute the plan from the home page."
       },
       "own_service": "Device",
       "common_service": "the common device",
@@ -480,12 +481,19 @@
         "forecast_drop": {
           "title": "Tomorrow's forecast drops",
           "help": "Tomorrow's planned production drops by more than 30 % against the highest forecast seen so far."
+        },
+        "week": {
+          "title": "This week's plan",
+          "help": "The appliances planned for the coming days, day by day, sent on the chosen days. Beyond two or three days, the plan follows a still uncertain weather forecast and may change."
         }
       },
       "sending_title": "Sending",
       "messages_title": "Messages",
       "service_help": "Receives the notifications, unless a message has its own device",
-      "other_help": "If it is not in the list"
+      "other_help": "If it is not in the list",
+      "week": {
+        "days": "Sending days"
+      }
     },
     "forecast": {
       "title": "Fallback solar forecast",

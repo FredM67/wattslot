@@ -255,12 +255,13 @@ async def _notify(
     now: datetime,
     zone: ZoneInfo,
     report: RunReport,
+    week_of: notifications.WeekOf | None = None,
 ) -> None:
     """Notifications activées, envoyées après un calcul planifié (lot 5.6) ; l'échec de l'une
     est noté dans le bilan du calcul sans empêcher les autres."""
     before = len(report.errors)
     try:
-        await notifications.dispatch(client, database, now, zone, report.errors)
+        await notifications.dispatch(client, database, now, zone, report.errors, week_of)
     except Exception as exc:  # noqa: BLE001 — noté dans le bilan, comme les autres échecs
         report.errors.append(f"notification : {type(exc).__name__}: {exc}")
     for error in report.errors[before:]:
@@ -275,6 +276,7 @@ def _scheduler(
     database: sqlite3.Connection,
     lock: asyncio.Lock,
     data_dir: Path | None = None,
+    week_of: notifications.WeekOf | None = None,
 ) -> PlanningScheduler:
     """Planificateur des calculs : réglages relus à chaque tour, HA connecté exigé (sauf pour
     relire les données réelles, lues sur le brut)."""
@@ -293,7 +295,7 @@ def _scheduler(
             data_dir=data_dir,
         )
         report = await run(context, now)
-        await _notify(client, database, now, raw.zone, report)
+        await _notify(client, database, now, raw.zone, report, week_of)
         return report
 
     async def refresher(now: datetime) -> None:
@@ -446,6 +448,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 database,
                 app.state.planning_lock,
                 settings.data_dir,
+                lambda lang: views_routes.week_view_of(app.state, lang),
             )
             scheduler.start()
         app.state.scheduler = scheduler
@@ -1117,7 +1120,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         client = connected_client(request)
         try:
             return await notifications.send_test(
-                client, request.app.state.database, kind, zone=request.app.state.raw.zone
+                client,
+                request.app.state.database,
+                kind,
+                zone=request.app.state.raw.zone,
+                week_of=lambda lang: views_routes.week_view_of(request.app.state, lang),
             )
         except LookupError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc

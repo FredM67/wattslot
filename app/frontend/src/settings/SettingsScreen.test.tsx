@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +25,7 @@ const NOTIFICATIONS: NotificationSettings = {
   plan_gap: OFF,
   battery_full: OFF,
   forecast_drop: OFF,
+  week: { ...OFF, weekdays: [6], at: "18:00:00" },
 };
 
 const CHOICES: SettingsChoices = {
@@ -164,6 +165,30 @@ describe("SettingsScreen", () => {
     expect(within(recommendation).queryByLabelText("à partir de")).toBeNull();
     await user.selectOptions(within(recommendation).getByLabelText("Rythme"), "une fois par jour");
     expect((within(recommendation).getByLabelText("à partir de") as HTMLInputElement).value).toBe("07:00");
+  });
+
+  it("planning de la semaine : jours d'envoi, heure, résumé et essai sans plan", async () => {
+    const user = userEvent.setup();
+    const calls = mockApi(Response.json({ detail: "no_week" }, { status: 409 }));
+    renderScreen();
+
+    await user.selectOptions(await screen.findByLabelText("Appareil commun"), "notify.mobile_app_phone");
+    const week = screen.getByRole("group", { name: "Planning de la semaine" });
+    await user.click(within(week).getByLabelText("Planning de la semaine"));
+    expect(within(week).getByText("Dim. à partir de 18:00 · l'appareil commun")).toBeTruthy();
+    // Au moins un jour : le seul coché ne se décoche pas.
+    expect((within(week).getByLabelText("dim.") as HTMLInputElement).disabled).toBe(true);
+    await user.click(within(week).getByLabelText("lun."));
+    expect((within(week).getByLabelText("dim.") as HTMLInputElement).disabled).toBe(false);
+    const at = within(week).getByLabelText("à partir de");
+    fireEvent.change(at, { target: { value: "07:30" } });
+    expect(within(week).getByText("Lun., dim. à partir de 07:30 · l'appareil commun")).toBeTruthy();
+
+    await user.click(within(week).getByRole("button", { name: "Envoyer un essai : Planning de la semaine" }));
+    expect(await within(week).findByText(/Pas encore de plan de la semaine/)).toBeTruthy();
+    const put = calls.find((call) => call.method === "PUT" && call.url === "api/settings/notifications");
+    expect((put?.body as NotificationSettings).week).toMatchObject({ enabled: true, weekdays: [0, 6], at: "07:30" });
+    expect(calls.some((call) => call.url === "api/notifications/week/test")).toBe(true);
   });
 
   it("accepte un service saisi à la main et dit pourquoi l'essai échoue", async () => {

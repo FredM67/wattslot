@@ -442,7 +442,8 @@
         "no_notify_service": "Kies eerst een apparaat.",
         "no_plan": "Nog geen dagplan: de test verstuurt het advies daarvan. Bereken het plan vanaf de startpagina.",
         "not_connected": "Home Assistant is niet verbonden.",
-        "failed": "Versturen mislukt: controleer de dienst in Home Assistant."
+        "failed": "Versturen mislukt: controleer de dienst in Home Assistant.",
+        "no_week": "Nog geen weekplanning: bereken het plan vanaf de startpagina."
       },
       "own_service": "Apparaat",
       "common_service": "het gemeenschappelijke apparaat",
@@ -480,12 +481,19 @@
         "forecast_drop": {
           "title": "Prognose voor morgen daalt",
           "help": "De geplande productie voor morgen daalt met meer dan 30 % ten opzichte van de hoogste prognose tot nu toe."
+        },
+        "week": {
+          "title": "Weekplanning",
+          "help": "De apparaten die voor de komende dagen gepland zijn, dag voor dag, verstuurd op de gekozen dagen. Na twee of drie dagen volgt het plan een nog onzekere weersverwachting en kan het veranderen."
         }
       },
       "sending_title": "Verzending",
       "messages_title": "Berichten",
       "service_help": "Ontvangt de meldingen, tenzij een bericht een eigen apparaat heeft",
-      "other_help": "Als het niet in de lijst staat"
+      "other_help": "Als het niet in de lijst staat",
+      "week": {
+        "days": "Verzenddagen"
+      }
     },
     "forecast": {
       "title": "Reserve-zonneprognose",

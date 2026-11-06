@@ -442,7 +442,8 @@
         "no_notify_service": "Scelga prima un dispositivo.",
         "no_plan": "Ancora nessun piano del giorno: la prova invia la sua raccomandazione. Calcoli il piano dalla pagina iniziale.",
         "not_connected": "Home Assistant non è connesso.",
-        "failed": "Invio non riuscito: controlli il servizio in Home Assistant."
+        "failed": "Invio non riuscito: controlli il servizio in Home Assistant.",
+        "no_week": "Ancora nessun programma della settimana: calcoli il piano dalla pagina iniziale."
       },
       "own_service": "Dispositivo",
       "common_service": "il dispositivo comune",
@@ -480,12 +481,19 @@
         "forecast_drop": {
           "title": "La previsione di domani cala",
           "help": "La produzione prevista per domani cala di oltre il 30 % rispetto alla previsione più alta vista finora."
+        },
+        "week": {
+          "title": "Programma della settimana",
+          "help": "Gli apparecchi previsti per i prossimi giorni, giorno per giorno, inviati nei giorni scelti. Oltre due o tre giorni, il piano segue una previsione meteo ancora incerta e può cambiare."
         }
       },
       "sending_title": "Invio",
       "messages_title": "Messaggi",
       "service_help": "Riceve le notifiche, salvo se un messaggio ha un dispositivo proprio",
-      "other_help": "Se non è nell'elenco"
+      "other_help": "Se non è nell'elenco",
+      "week": {
+        "days": "Giorni di invio"
+      }
     },
     "forecast": {
       "title": "Previsione solare di riserva",
