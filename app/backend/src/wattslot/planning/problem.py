@@ -106,6 +106,8 @@ class BatteryModel:
     full_kwh: float
     full_priority: bool  # charge complète hebdomadaire due
     floor_by_hour: Mapping[int, float] = field(default_factory=dict)  # plages (lot 3.5), kWh
+    hour_elapsed: float = 0.0  # part écoulée de la première heure
+    hour_change_kwh: float = 0.0  # contenu stocké : variation mesurée depuis son début
 
     def floor_at(self, hour: int) -> float:
         return self.floor_by_hour.get(hour, self.floor_kwh)
@@ -491,6 +493,8 @@ def from_input(data: PlanningInput, reference: Reference = REFERENCE) -> Problem
             if measured_ok
             else per_direction,
             floor_kwh=battery.capacity_kwh * battery.floor_percent / 100,
+            hour_elapsed=battery.hour_elapsed,
+            hour_change_kwh=battery.hour_change_kwh,
             full_kwh=battery.capacity_kwh * reference.full_percent / 100,
             full_priority=priority_day,
             floor_by_hour={

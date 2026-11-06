@@ -84,6 +84,10 @@ class Battery:
     active_to_hour: int = 24
     full_charge_every_days: int | None = 6
     floor_ranges: tuple[tuple[int, int, float], ...] = ()  # (début, fin exclue, %), lot 3.5
+    # Heure en cours : part déjà écoulée et variation mesurée du contenu stocké depuis son début
+    # (kWh) ; ``stored_kwh`` est alors le contenu mesuré maintenant.
+    hour_elapsed: float = 0.0
+    hour_change_kwh: float = 0.0
 
 
 @dataclass(frozen=True)

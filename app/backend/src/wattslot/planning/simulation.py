@@ -5,6 +5,11 @@ tests. La batterie n'est pas pilotée : sur sa plage active, elle charge sur tou
 se décharge sur tout le déficit, dans la limite de ses puissances, de sa capacité et de son
 plancher ; hors plage, elle ne fait rien. Les énergies échangées sont comptées côté maison,
 le contenu stocké après pertes (rendement par sens).
+
+Heure en cours (``elapsed``) : le calcul tourne en fin d'heure. Le début de l'heure est ce qui a
+été mesuré (``elapsed_change_kwh``), la batterie ne bouge que sur les minutes qui restent. Sans
+cela, chaque calcul rejouait l'heure entière depuis le SoC mesuré : une batterie restée au
+plancher « se déchargeait » à chaque heure, et le plan additionnait ces décharges.
 """
 
 from collections.abc import Mapping
@@ -27,6 +32,13 @@ class BatteryRun:
     residual_kwh: dict[int, float]  # échange avec le réseau : positif injection, négatif soutirage
 
 
+def _measured(change_kwh: float, charge_efficiency: float, discharge_efficiency: float) -> float:
+    """Échange côté maison (positif charge) correspondant à une variation du contenu stocké."""
+    if change_kwh > 0:
+        return change_kwh / charge_efficiency if charge_efficiency > 0 else 0.0
+    return change_kwh * discharge_efficiency
+
+
 def simulate(
     net_kwh: Mapping[int, float],
     stored_kwh: float,
@@ -40,34 +52,44 @@ def simulate(
     floor_kwh: float,
     first_hour: int = 0,
     floor_by_hour: Mapping[int, float] | None = None,
+    elapsed: float = 0.0,
+    elapsed_change_kwh: float = 0.0,
 ) -> BatteryRun:
     """``net_kwh`` : production moins toute la consommation, par heure (+ surplus) ;
-    ``floor_by_hour`` : plancher de certaines heures (plages, lot 3.5), sinon ``floor_kwh``."""
+    ``floor_by_hour`` : plancher de certaines heures (plages, lot 3.5), sinon ``floor_kwh`` ;
+    ``elapsed`` : part écoulée de ``first_hour``, ``elapsed_change_kwh`` : variation mesurée du
+    contenu stocké pendant cette part (``stored_kwh`` : contenu mesuré maintenant)."""
     movements: list[Movement] = []
     soc: dict[int, float] = {}
     residual: dict[int, float] = {}
     stored = stored_kwh
     for hour in range(first_hour, 24):
         net = net_kwh.get(hour, 0.0)
-        if hour in net_kwh:
-            residual[hour] = net
-        if not active_from <= hour < active_to:
-            soc[hour] = stored
-            continue
-        if net > 0:
-            room = (capacity_kwh - stored) / charge_efficiency if charge_efficiency > 0 else 0.0
-            taken = min(net, charge_max_kw, room)
-            if taken > 0:
+        current = hour == first_hour
+        share = 1.0 - elapsed if current else 1.0
+        # Échange côté maison : positif charge, négatif décharge ; part mesurée de l'heure en cours.
+        exchanged = (
+            _measured(elapsed_change_kwh, charge_efficiency, discharge_efficiency)
+            if current
+            else 0.0
+        )
+        if active_from <= hour < active_to:
+            if net > 0:
+                room = (capacity_kwh - stored) / charge_efficiency if charge_efficiency > 0 else 0.0
+                taken = max(0.0, min(net * share, charge_max_kw * share, room))
                 stored += taken * charge_efficiency
-                residual[hour] = net - taken
-                movements.append(Movement(hour, "charge", round(taken, 3)))
-        elif net < 0:
-            floor = (floor_by_hour or {}).get(hour, floor_kwh)
-            available = max(0.0, stored - floor) * discharge_efficiency
-            given = min(-net, discharge_max_kw, available)
-            if given > 0:
+                exchanged += taken
+            elif net < 0:
+                floor = (floor_by_hour or {}).get(hour, floor_kwh)
+                available = max(0.0, stored - floor) * discharge_efficiency
+                given = max(0.0, min(-net * share, discharge_max_kw * share, available))
                 stored -= given / discharge_efficiency if discharge_efficiency > 0 else 0.0
-                residual[hour] = net + given
-                movements.append(Movement(hour, "decharge", round(given, 3)))
+                exchanged -= given
+        if hour in net_kwh:
+            residual[hour] = net - exchanged
+        if exchanged > 0:
+            movements.append(Movement(hour, "charge", round(exchanged, 3)))
+        elif exchanged < 0:
+            movements.append(Movement(hour, "decharge", round(-exchanged, 3)))
         soc[hour] = stored
     return BatteryRun(movements, stored, soc, residual)

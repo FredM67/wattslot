@@ -3,9 +3,10 @@
 1. **Bascule** : si le plan gardé porte sur la veille, ses données réelles sont complétées
    jusqu'à minuit, puis il est archivé (vue Hier).
 2. **Le jour** : entrée assemblée (``assemble.py``), complétée par le plan précédent de la
-   journée : blocs déjà décidés (gelés), filtration déjà planifiée, SoC de départ de l'heure en
-   cours (``merge.start_soc``), charge complète atteinte aujourd'hui ; tâches en attente
-   affectées à un jour (``assignment.py``, mémoire d'un calcul à l'autre) ; plan du moteur,
+   journée : blocs déjà décidés (gelés), filtration déjà planifiée, début de l'heure en cours
+   mesuré (la batterie ne bouge que sur les minutes qui restent), charge complète atteinte
+   aujourd'hui ; tâches en attente affectées à un jour (``assignment.py``, mémoire d'un calcul
+   à l'autre) ; plan du moteur,
    fusionné avec le passé du plan précédent (``merge.py``) ; données réelles depuis minuit
    (``actual.py``), superposées au plan par le dashboard.
 3. **Demain** : part du SoC prévu en fin de journée ; **horizon** : jours suivants enchaînés
@@ -51,7 +52,7 @@ from wattslot.planning.engine import (
 from wattslot.planning.horizon import DayForecast, compute_horizon, end_soc_kwh
 from wattslot.planning.inputs import FrozenCycle, PlanningInput, RecentHistory
 from wattslot.planning.journal import CycleJournal, cycle_appliances
-from wattslot.planning.merge import BATTERY, POOL, merge_plans, pool_modes, start_soc
+from wattslot.planning.merge import BATTERY, POOL, merge_plans, pool_modes, soc_at_hour_start
 from wattslot.planning.past import AggregateReader
 from wattslot.planning.plan import Plan, Reason
 from wattslot.planning.problem import characteristics, from_input
@@ -246,11 +247,16 @@ def with_past(
     }
     if at_midnight is not None:
         readings["soc_pct_minuit"] = at_midnight
+    # Heure en cours : son début est mesuré (SoC de fin de l'heure précédente → maintenant), la
+    # simulation ne décide que des minutes qui restent, depuis le SoC mesuré maintenant.
     battery = data.battery
-    start = start_soc(readings, data.first_hour, dict(old) if old else None)
-    if start is not None and battery.capacity_kwh > 0:
+    hour_start = soc_at_hour_start(readings, data.first_hour)
+    if hour_start is not None and battery.capacity_kwh > 0:
+        local = now.astimezone(ctx.raw.zone)
         battery = replace(
-            battery, soc_percent=round(start, 1), stored_kwh=start * battery.capacity_kwh / 100
+            battery,
+            hour_elapsed=(local.minute + local.second / 60) / 60,
+            hour_change_kwh=(current - hour_start) * battery.capacity_kwh / 100,
         )
     history = data.history
     if max(maximum, current) >= FULL_CHARGE_PERCENT:

@@ -17,7 +17,7 @@ Le plan suit le format de la v1 (sortie du moteur, ``engine.output``), lu par le
 
 import json
 from collections.abc import Mapping
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 from wattslot.planning.cycles import Segment, recognized_segment
@@ -246,45 +246,3 @@ def soc_at_hour_start(readings: Mapping[str, Any] | None, hour: int) -> float | 
         return readings.get("soc_pct_minuit")
     by_hour = readings.get("soc_pct_fin_heure") or {}
     return by_hour.get(hour - 1, by_hour.get(str(hour - 1)))
-
-
-def start_soc(
-    readings: Mapping[str, Any] | None, hour: int, old: Plan | None = None
-) -> float | None:
-    """SoC de départ (%) du calcul, qui simule l'heure ``hour`` en entier.
-
-    On part du SoC mesuré au relevé, moins la part déjà écoulée de l'action de la batterie que
-    le plan précédent prévoyait pour cette heure (rendements compris) : la simulation de
-    l'heure entière retrouve ainsi le SoC mesuré, puis n'ajoute que la fin de l'heure. Sans
-    plan précédent de la même journée ou sans relevé dans l'heure : SoC du début de l'heure.
-    Borné à [0, 100].
-    """
-    readings = readings or {}
-    by_hour = readings.get("soc_pct_fin_heure") or {}
-    measured = by_hour.get(hour, by_hour.get(str(hour)))
-    battery = next(
-        (i for i in (old or {}).get("planning", []) if i.get("equipement") == BATTERY), None
-    )
-    capacity = (old or {}).get("capacite_batterie_kwh")
-    try:
-        at: datetime | None = datetime.fromisoformat(readings.get("heure_maj_iso") or "")
-    except ValueError:
-        at = None
-    if measured is None or battery is None or not capacity or at is None or at.hour != hour:
-        return soc_at_hour_start(readings, hour)
-    round_trip = (old or {}).get("rendement_round_trip_percent")
-    per_direction = (round_trip / 100) ** 0.5 if round_trip else 1.0
-    efficiencies = (old or {}).get("rendements_batterie") or {}
-    measured_ok = efficiencies.get("status") == "ok"
-    charge = (efficiencies["rendement_charge_percent"] / 100 if measured_ok else 0) or per_direction
-    discharge = (
-        efficiencies["rendement_decharge_percent"] / 100 if measured_ok else 0
-    ) or per_direction
-    change_kwh = sum(
-        m["energie_kwh"] * charge if m["action"] == "charge" else -m["energie_kwh"] / discharge
-        for m in battery.get("mouvements", [])
-        if m.get("heure") == hour
-    )
-    elapsed = at.minute / 60
-    percent: float = float(measured) - elapsed * change_kwh / float(capacity) * 100
-    return min(100.0, max(0.0, percent))
