@@ -28,6 +28,12 @@ class Reference:
     # l'estimée, jugée au-delà d'1 kWh estimé
     forecast_drift_percent: float = 10.0
     forecast_drift_min_kwh: float = 1.0
+    # Prévision recalée dans la journée : les heures restantes suivent le rapport production
+    # mesurée / prévue depuis minuit, borné, jugé au-delà de 0,3 kWh prévus (une installation
+    # de quelques kWc en novembre l'atteint vers 10h).
+    forecast_correction_min_kwh: float = 0.3
+    forecast_correction_min_ratio: float = 0.2
+    forecast_correction_max_ratio: float = 1.5
     # Cycles des équipements quand aucun profil de cycle mesuré n'est exploitable
     cycle_hours: dict[str, int] = field(
         default_factory=lambda: {

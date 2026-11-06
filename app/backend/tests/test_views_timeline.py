@@ -10,7 +10,12 @@ import pytest
 from tests.test_views_day import PARIS, V1_CONTEXT, state_of
 from tests.v1_oracle import STATES, v1
 from wattslot.views.display import Context
-from wattslot.views.timeline import build_timeline, planned_devices, statuses
+from wattslot.views.timeline import (
+    MIN_BATTERY_BAR_KWH,
+    build_timeline,
+    planned_devices,
+    statuses,
+)
 
 IDS = [p.stem for p in STATES]
 ECO_KW = v1("noeud_calcul.PUISSANCE_ECO_KW")
@@ -37,6 +42,7 @@ def test_planned_bars_are_those_of_the_v1(path: Path) -> None:
                 "charge" if b["action"] == "charge" else "discharge",
             )
             for b in blocks
+            if b["energie_kwh"] >= MIN_BATTERY_BAR_KWH
         ]
     for item in planning:
         if "heure_debut" in item and item["equipement"] != "Batterie":
@@ -152,3 +158,21 @@ def test_rows_show_actual_bars_and_hide_empty_appliances() -> None:
     battery = timeline.rows[0].actual[0]
     assert (battery.start_hour, battery.end_hour, battery.action) == (11.0, 12.5, "charge")
     assert timeline.rows[2].planned == [] and timeline.rows[2].actual[0].energy_kwh == 1.0
+
+
+def test_a_battery_movement_of_a_few_wh_is_not_shown() -> None:
+    """« 0,0 kWh » : quelques Wh au-dessus du plancher, pas un mouvement à montrer."""
+    state = {
+        "planning": [
+            {
+                "equipement": "Batterie",
+                "mouvements": [
+                    {"heure": 11, "action": "charge", "energie_kwh": 0.5},
+                    {"heure": 13, "action": "decharge", "energie_kwh": 0.012},
+                ],
+            }
+        ]
+    }
+    timeline = build_timeline(state, None, 12.0, 10.0, 8.0, V1_CONTEXT)
+
+    assert [(b.start_hour, b.action) for b in timeline.rows[0].planned] == [(11, "charge")]

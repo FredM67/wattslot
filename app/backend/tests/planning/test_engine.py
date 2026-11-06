@@ -367,3 +367,36 @@ def test_an_expensive_currency_does_not_skip_appliances() -> None:
 
     assert set(solve(in_forint).starts) == set(solve(dark).starts) == {"Chauffe-eau"}
     assert solve(replace(in_forint, price_scale=1.0)).starts == {}  # le défaut corrigé
+
+
+def test_the_forecast_of_the_day_follows_the_measured_production() -> None:
+    """Prévision trop optimiste (nuages non prévus) : les heures restantes suivent le rapport
+    mesuré / prévu depuis minuit, sinon chaque calcul horaire prévoyait une charge de la
+    batterie sur un surplus qui ne venait pas."""
+    from wattslot.planning.problem import corrected_production, forecast_ratio
+    from wattslot.planning.reference import REFERENCE
+
+    data = from_v1(load(state_named("today_h06_no_measured_efficiency"))[0])
+    production = {h: (0.5 if 8 <= h < 16 else 0.0) for h in range(24)}
+    net = {h: round(production[h] - 0.4, 3) for h in range(24)}
+    cloudy = replace(
+        data,
+        first_hour=11,
+        production_kwh=production,
+        net_kwh=net,
+        measured_at_hour=11.0,
+        measured_production_kwh=0.45,  # 1,5 kWh prévus de 8h à 11h
+    )
+
+    assert forecast_ratio(cloudy, REFERENCE) == 0.3
+    corrected, corrected_net = corrected_production(cloudy, REFERENCE)
+    assert corrected[10] == 0.5 and corrected_net[10] == net[10]  # heure passée : telle quelle
+    assert corrected[12] == 0.15 and corrected_net[12] == -0.25
+    assert from_input(cloudy).production_kwh[12] == 0.15
+
+    # Trop tôt pour juger, ou bornes : 0,2 à 1,5.
+    early = replace(cloudy, measured_at_hour=8.5, measured_production_kwh=0.0)
+    assert forecast_ratio(early, REFERENCE) is None
+    assert corrected_production(early, REFERENCE) == (production, net)
+    assert forecast_ratio(replace(cloudy, measured_production_kwh=0.0), REFERENCE) == 0.2
+    assert forecast_ratio(replace(cloudy, measured_production_kwh=9.0), REFERENCE) == 1.5
