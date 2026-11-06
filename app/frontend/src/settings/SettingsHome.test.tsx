@@ -75,7 +75,9 @@ describe("SettingsHome", () => {
       "href",
       "#/settings/calculation",
     );
-    expect(await link(/Sauvegarder ou partager/)).toHaveAttribute("href", "#/home/backup");
+    // Sauvegarde et bibliothèque : dans Ma maison seulement.
+    expect(screen.queryByRole("link", { name: /Sauvegarder ou partager/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Bibliothèque d'appareils/ })).not.toBeInTheDocument();
     expect(await link(/Connexion à Home Assistant\s*Connecté/)).toHaveAttribute("href", "#/settings/connection");
   });
 });

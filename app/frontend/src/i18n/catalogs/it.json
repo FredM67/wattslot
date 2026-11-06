@@ -632,7 +632,9 @@
     "connect_token": "Connetti con questo token",
     "security": "La connessione è conservata sul dispositivo dove gira l'applicazione, mai in un'esportazione o in un rapporto. Esponga l'applicazione solo sulla rete locale: non ha un accesso proprio.",
     "retry": "Riprova adesso",
-    "checking": "Verifica…"
+    "checking": "Verifica…",
+    "connect_title": "Connettersi",
+    "saved_title": "Connessione salvata"
   },
   "home": {
     "title": "La mia casa",

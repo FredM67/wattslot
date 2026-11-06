@@ -632,7 +632,9 @@
     "connect_token": "Connect with this token",
     "security": "The connection is kept on the device running the application, never in an export or a report. Only expose the application on your local network: it has no login of its own.",
     "retry": "Try again now",
-    "checking": "Checking…"
+    "checking": "Checking…",
+    "connect_title": "Connect",
+    "saved_title": "Saved connection"
   },
   "home": {
     "title": "My home",
