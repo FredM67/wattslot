@@ -178,8 +178,7 @@
       "series": {
         "production": "Erzeugung",
         "consumption": "Verbrauch",
-        "soc": "Ladestand",
-        "surplus": "Überschuss"
+        "soc": "Ladestand"
       },
       "off_peak": "Nebenzeiten",
       "agenda": "Wochenablauf",

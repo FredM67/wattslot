@@ -178,8 +178,7 @@
       "series": {
         "production": "Production",
         "consumption": "Consommation",
-        "soc": "SoC",
-        "surplus": "Surplus"
+        "soc": "SoC"
       },
       "off_peak": "Heures creuses",
       "agenda": "Agenda de la semaine",

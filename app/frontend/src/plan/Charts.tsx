@@ -231,7 +231,6 @@ export function WeekChart({
   const data = points.map((point, index) => ({
     index,
     value: series === "production" ? point.production_kwh : series === "consumption" ? point.consumption_kwh : point.soc_percent,
-    surplus: series === "production" ? Math.round((point.production_kwh - point.consumption_kwh) * 1000) / 1000 : undefined,
     soc_kwh: point.soc_kwh,
   }));
   const ticks = points.flatMap((point, index) => (point.hour === 12 ? [index] : []));
@@ -274,7 +273,6 @@ export function WeekChart({
             domain={soc ? [0, 100] : [0, "auto"]}
             width="auto"
           />
-          {series === "production" && <YAxis yAxisId="surplus" hide />}
           <Tooltip
             contentStyle={TOOLTIP}
             labelFormatter={(index) => label(Number(index))}
@@ -304,11 +302,6 @@ export function WeekChart({
             connectNulls={false}
             isAnimationActive={false}
           />
-          {series === "production" && (
-            // Surplus (souvent négatif : production moins consommation) pour l'infobulle seulement,
-            // sur son propre axe caché : l'axe de la production reste à partir de 0.
-            <Area yAxisId="surplus" type="monotone" dataKey="surplus" name={t("plan.week.series.surplus")} stroke="none" fill="none" legendType="none" activeDot={false} />
-          )}
         </AreaChart>
       </ResponsiveContainer>
     </div>

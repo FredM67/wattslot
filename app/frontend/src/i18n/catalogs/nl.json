@@ -178,8 +178,7 @@
       "series": {
         "production": "Productie",
         "consumption": "Verbruik",
-        "soc": "Laadniveau",
-        "surplus": "Overschot"
+        "soc": "Laadniveau"
       },
       "off_peak": "Daluren",
       "agenda": "Weekagenda",
