@@ -55,7 +55,7 @@ from wattslot.planning.journal import CycleJournal, cycle_appliances
 from wattslot.planning.merge import BATTERY, POOL, merge_plans, pool_modes, soc_at_hour_start
 from wattslot.planning.past import AggregateReader
 from wattslot.planning.plan import Plan, Reason
-from wattslot.planning.problem import characteristics, from_input
+from wattslot.planning.problem import characteristics, from_input, with_corrected_forecast
 from wattslot.planning.recommendation import recommendation
 from wattslot.planning.sources import Forecasts, PlanningSettings, has_production
 from wattslot.planning.store import PlanStore, StoredPlan
@@ -504,6 +504,8 @@ async def run(ctx: Context, now: datetime, manual: bool = False) -> RunReport:
         ctx.database, cycle_appliances(ctx.model, ctx.configuration), launched_keys(data), today
     )
     try:
+        # Prévision recalée sur la production mesurée : calcul et plan enregistré la partagent.
+        data = with_corrected_forecast(data)
         result = plan_day(from_input(data), objective)
     except NoPlanError as exc:
         ctx.capture_no_plan(exc)

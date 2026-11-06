@@ -373,7 +373,11 @@ def test_the_forecast_of_the_day_follows_the_measured_production() -> None:
     """Prévision trop optimiste (nuages non prévus) : les heures restantes suivent le rapport
     mesuré / prévu depuis minuit, sinon chaque calcul horaire prévoyait une charge de la
     batterie sur un surplus qui ne venait pas."""
-    from wattslot.planning.problem import corrected_production, forecast_ratio
+    from wattslot.planning.problem import (
+        corrected_production,
+        forecast_ratio,
+        with_corrected_forecast,
+    )
     from wattslot.planning.reference import REFERENCE
 
     data = from_v1(load(state_named("today_h06_no_measured_efficiency"))[0])
@@ -392,7 +396,9 @@ def test_the_forecast_of_the_day_follows_the_measured_production() -> None:
     corrected, corrected_net = corrected_production(cloudy, REFERENCE)
     assert corrected[10] == 0.5 and corrected_net[10] == net[10]  # heure passée : telle quelle
     assert corrected[12] == 0.15 and corrected_net[12] == -0.25
-    assert from_input(cloudy).production_kwh[12] == 0.15
+    corrected_input = with_corrected_forecast(cloudy)
+    assert corrected_input.production_kwh[12] == 0.15 and corrected_input.net_kwh[12] == -0.25
+    assert from_input(corrected_input).production_kwh[12] == 0.15
 
     # Trop tôt pour juger, ou bornes : 0,2 à 1,5.
     early = replace(cloudy, measured_at_hour=8.5, measured_production_kwh=0.0)
