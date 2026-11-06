@@ -46,13 +46,16 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     async def explain_device(device: str, day: tools.Day = "today") -> dict[str, Any]:
+        # « today » par défaut, dit en clair : gemma4 sans réflexion et ministral demandaient
+        # « pour quel jour ? » au lieu d'appeler l'outil (banc du 05/11).
         """Why an appliance runs when it does: planned and actual times, reason, whether it
-        started on time. No time needed in the question."""
+        started on time. No time needed in the question; day is today unless another is asked."""
         return await tools.explain_device(state(), device, day)
 
     @server.tool(annotations=READ_ONLY)
     async def get_week() -> dict[str, Any]:
-        """The next days: production, weather, planned appliances."""
+        """The next days from tomorrow, about a week (no forecast beyond): production, weather,
+        appliances. Today: get_day_plan."""
         return await tools.get_week(state())
 
     @server.tool(annotations=READ_ONLY)
@@ -66,40 +69,47 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
         return await tools.get_energy(state(), day)
 
     @server.tool(annotations=READ_ONLY)
-    async def get_forecast(day: Literal["today", "tomorrow"] = "today") -> dict[str, Any]:
-        """Weather and solar production forecast, hour by hour."""
+    async def get_forecast(day: str = "today") -> dict[str, Any]:
+        # Banc d'essai (2 x 5 essais) : avec « up to about a week ahead », qwen3 n'appelait plus
+        # get_tariff pour « le prix du kWh » (0 sur 10, contre 10 sur 10 avec ce texte).
+        # Un nombre de jours, avec un exemple : sans date du jour connue, qwen3 refusait « dans
+        # 10 jours » sans outil (3 sur 3, et en anglais sans l'exemple) ; avec, il appelle
+        # day="10" (3 sur 3), Q5 et Q18 inchangées (banc du 06/11).
+        """Weather and solar forecast of a day: today, tomorrow, YYYY-MM-DD, or a number of days
+        from today ("10" for in 10 days). Hour by hour today and tomorrow; says when the
+        forecast ends."""
         return await tools.get_forecast(state(), day)
 
     @server.tool(annotations=READ_ONLY)
     def get_home() -> dict[str, Any]:
-        """Appliances of the home and how they are planned, tariff, objective."""
+        """Appliances of the home (not today's plan), battery, solar, tariff, objective."""
         return tools.get_home(state())
 
     @server.tool(annotations=READ_ONLY)
     async def get_problems() -> dict[str, Any]:
         """What is wrong with the application, most serious first."""
-        return await tools.get_problems(problems)
+        return await tools.get_problems(state(), problems)
 
     @server.tool(annotations=READ_ONLY)
     async def get_tariff(day: Literal["today", "tomorrow"] = "today") -> dict[str, Any]:
-        """Electricity price per time range, off-peak hours, color of the day. Not the cost of
-        the day: get_day_plan."""
+        """Electricity price (price of a kWh) per time range, off-peak hours, color of the day.
+        Not the cost of the day: get_day_plan."""
         return await tools.get_tariff(state(), day)
 
     @server.tool(annotations=READ_ONLY)
     def get_requests() -> dict[str, Any]:
-        """Requests filed in My requests: open ones, then recently closed. An open one with a
-        launch date has already run. Not the next appliance: get_day_plan."""
+        """Requests filed in My requests: open ones, and apart those closed this week. An open
+        one with a launch date has already run. Not the next appliance: get_day_plan."""
         return tools.get_requests(state())
 
     @server.tool(annotations=REQUEST)
     def request_device(
-        device: str, latest_date: str | None = None, confirm_code: str | None = None
+        device: str, latest_date: str | None = None, confirm: bool = False
     ) -> dict[str, Any]:
         """Run an appliance at the best time, by latest_date (today, tomorrow or YYYY-MM-DD).
-        Call first without confirm_code: nothing is filed, ask the user the question returned;
-        call again with its confirm_code if they agree."""
-        return tools.request_device(state(), device, latest_date, confirm_code)
+        Call first without confirm: nothing is filed, ask the user the question returned; call
+        again with confirm true if they agree."""
+        return tools.request_device(state(), device, latest_date, confirm)
 
     return server
 
