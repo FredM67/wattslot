@@ -40,6 +40,7 @@ const RESPONSES: Record<string, unknown> = {
     plan_gap: OFF,
     battery_full: OFF,
     forecast_drop: OFF,
+    week: { ...OFF, weekdays: [6], at: "18:00:00" },
   },
   "api/settings/choices": { connected: true, todo_lists: [], notify_services: [], forecast_entities: [] },
   "api/planning/status": { enabled: true, next_run_at: null },

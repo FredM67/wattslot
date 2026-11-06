@@ -13,6 +13,10 @@ Les quatre autres (PR 2, conditions et textes dans ``notification_events``) part
 fois par clé (équipement, cause…) et par jour : « lancez X maintenant », écart au plan, batterie
 pleine avant midi, prévision de demain qui chute.
 
+Le planning de la semaine part les jours choisis, une fois, au premier calcul à partir de
+l'heure choisie : les appareils prévus jour par jour, d'après la vue Semaine. Celle-ci a besoin
+de l'état de l'application ; ``dispatch`` et ``send_test`` la reçoivent donc par ``week_of``.
+
 Les réglages sont gardés dans ``app_settings`` ; sans réglage enregistré, ceux d'avant le lot
 5.6 (``notify_service`` et ``notify_language`` des réglages du calcul) s'appliquent.
 """
@@ -20,8 +24,9 @@ Les réglages sont gardés dans ``app_settings`` ; sans réglage enregistré, ce
 import hashlib
 import json
 import sqlite3
+from collections.abc import Awaitable, Callable
 from datetime import datetime, time
-from typing import Any, Literal, get_args
+from typing import Annotated, Any, Literal, get_args
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
@@ -32,14 +37,18 @@ from wattslot.languages import Language
 from wattslot.planning.recommendation import recommendation, title
 from wattslot.planning.sources import load_settings
 from wattslot.planning.store import PlanStore
+from wattslot.views.week import WeekView
 
 SETTINGS_KEY = "notifications"
 SERVICE_PATTERN = r"^notify\.[a-z0-9_]+$"
 
-Kind = Literal["recommendation", "device_now", "plan_gap", "battery_full", "forecast_drop"]
+Kind = Literal["recommendation", "device_now", "plan_gap", "battery_full", "forecast_drop", "week"]
 EVENT_KINDS: tuple[Kind, ...] = ("device_now", "plan_gap", "battery_full", "forecast_drop")
 FORECAST_KEY = "notifications_forecast_reference"  # plus haute prévision vue pour demain
 Cadence = Literal["every_run", "when_changed", "daily"]
+Weekday = Annotated[int, Field(ge=0, le=6)]  # lundi = 0, comme ``date.weekday()``
+# Vue Semaine dans une langue (``views.routes.week_view_of`` sur l'état de l'application).
+WeekOf = Callable[[str], Awaitable[WeekView | None]]
 
 
 class QuietHours(BaseModel):
@@ -65,6 +74,11 @@ class RecommendationRule(Rule):
     daily_at: time = time(7, 0)  # rythme « une fois par jour »
 
 
+class WeekRule(Rule):
+    weekdays: list[Weekday] = Field(default=[6], min_length=1)  # dimanche par défaut
+    at: time = time(18, 0)
+
+
 class NotificationSettings(BaseModel):
     service: str | None = Field(default=None, pattern=SERVICE_PATTERN)  # appareil commun
     language: Language = "fr"  # une des six langues (lot 5.7)
@@ -73,6 +87,7 @@ class NotificationSettings(BaseModel):
     plan_gap: Rule = Rule()
     battery_full: Rule = Rule()
     forecast_drop: Rule = Rule()
+    week: WeekRule = WeekRule()
 
     def service_of(self, kind: Kind) -> str | None:
         rule: Rule = getattr(self, kind)
@@ -147,6 +162,16 @@ def due(
         return previous is None or previous[1] != _fingerprint(message)
     return local.time() >= rule.daily_at and (
         previous is None or previous[0] != local.date().isoformat()
+    )
+
+
+def week_due(rule: WeekRule, previous: tuple[str, str] | None, local: datetime) -> bool:
+    """Le planning de la semaine part-il à ce calcul : un jour choisi, à partir de l'heure
+    choisie, pas encore envoyé ce jour-là ?"""
+    return (
+        local.weekday() in rule.weekdays
+        and local.time() >= rule.at
+        and (previous is None or previous[0] != local.date().isoformat())
     )
 
 
@@ -230,10 +255,11 @@ async def dispatch(
     now: datetime,
     zone: ZoneInfo,
     errors: list[str] | None = None,
+    week_of: WeekOf | None = None,
 ) -> list[Sent]:
     """Notifications à envoyer après un calcul planifié ; renvoie celles envoyées. Avec
     ``errors`` (bilan du calcul), l'échec d'une notification y est noté sans empêcher les autres ;
-    sans, il remonte."""
+    sans, il remonte. Sans ``week_of``, pas de planning de la semaine."""
     settings = load(database)
     local = now.astimezone(zone)
     lang = settings.language
@@ -276,6 +302,23 @@ async def dispatch(
                     await deliver(kind, found.key, found.day, found.message, service)
         except Exception as exc:  # noqa: BLE001 — noté, les autres continuent
             failed(kind, exc)
+
+    week_rule = settings.week
+    service = settings.service_of("week")
+    if (
+        week_rule.enabled
+        and service is not None
+        and week_of is not None
+        and not _quiet(week_rule, local)
+        and week_due(week_rule, last_sent(database, "week", "plan"), local)
+    ):
+        try:
+            view = await week_of(lang)
+            text = events.week(view, local, lang) if view is not None else None
+            if text is not None:  # sans plan, il partira au calcul suivant
+                await deliver("week", "plan", local.date().isoformat(), text, service)
+        except Exception as exc:  # noqa: BLE001 — noté, les autres continuent
+            failed("week", exc)
     return sent
 
 
@@ -301,18 +344,26 @@ async def send_test(
     kind: Kind,
     now: datetime | None = None,
     zone: ZoneInfo | None = None,
+    week_of: WeekOf | None = None,
 ) -> Sent:
     """Envoi d'essai, tout de suite, sans heures de silence ni rythme, et sans le noter. La
-    recommandation est celle du plan du jour ; les autres, marquées « [Essai] », une candidate
-    du moment s'il y en a, sinon un exemple. ``LookupError`` : « no_notify_service » ou
-    « no_plan »."""
+    recommandation est celle du plan du jour, le planning de la semaine celui de la vue Semaine ;
+    les autres, marquées « [Essai] », une candidate du moment s'il y en a, sinon un exemple.
+    ``LookupError`` : « no_notify_service », « no_plan » ou « no_week »."""
     settings = load(database)
     lang = settings.language
     service = settings.service_of(kind)
     if service is None:
         raise LookupError("no_notify_service")
     plan = PlanStore(database).load("today")
-    if kind == "recommendation":
+    if kind == "week":
+        local = (now or datetime.now(zone)).astimezone(zone)
+        view = await week_of(lang) if week_of is not None else None
+        week_message = events.week(view, local, lang) if view is not None else None
+        if week_message is None:
+            raise LookupError("no_week")
+        message = week_message
+    elif kind == "recommendation":
         if plan is None:
             raise LookupError("no_plan")
         message = recommendation(plan.content, lang)

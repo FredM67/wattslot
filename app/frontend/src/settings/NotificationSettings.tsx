@@ -1,8 +1,9 @@
 // Section « Notifications » des réglages (lot 5.6), en listes comme les autres pages : l'envoi
 // (appareil commun, autre service, langue), puis une ligne par notification du catalogue avec
 // son interrupteur. Une notification activée montre ses options en résumé (rythme, appareil,
-// heures de silence), qui se déplie pour les régler et envoyer un essai. Réglages de
-// /api/settings/notifications, enregistrés avec le reste de la page.
+// heures de silence), qui se déplie pour les régler et envoyer un essai. Le planning de la semaine
+// a ses jours d'envoi et son heure. Réglages de /api/settings/notifications, enregistrés avec le
+// reste de la page.
 
 import { useState } from "react";
 
@@ -14,8 +15,11 @@ import Icon from "../ui/Icon";
 import { SettingList } from "../ui/SettingRow";
 import Switch from "../ui/Switch";
 
-export type NotificationKind = "recommendation" | "device_now" | "plan_gap" | "battery_full" | "forecast_drop";
-const KINDS: NotificationKind[] = ["recommendation", "device_now", "plan_gap", "battery_full", "forecast_drop"];
+export type NotificationKind = "recommendation" | "week" | "device_now" | "plan_gap" | "battery_full" | "forecast_drop";
+const KINDS: NotificationKind[] = ["recommendation", "week", "device_now", "plan_gap", "battery_full", "forecast_drop"];
+
+// Jours de la semaine, lundi = 0 comme côté serveur ; libellés de l'éditeur de cycle.
+const WEEKDAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"] as const;
 
 export interface QuietHours {
   start: string; // « 22:00:00 »
@@ -33,10 +37,16 @@ export interface RecommendationRule extends Rule {
   daily_at: string;
 }
 
+export interface WeekRule extends Rule {
+  weekdays: number[]; // lundi = 0
+  at: string;
+}
+
 export interface NotificationSettings {
   service: string | null;
   language: Language;
   recommendation: RecommendationRule;
+  week: WeekRule;
   device_now: Rule;
   plan_gap: Rule;
   battery_full: Rule;
@@ -119,7 +129,7 @@ export default function NotificationSettingsSection({
       if (response.ok) {
         result = { status: "sent", message: body.message ?? "" };
       } else {
-        const known = ["no_notify_service", "no_plan"];
+        const known = ["no_notify_service", "no_plan", "no_week"];
         const reason =
           response.status === 503
             ? "not_connected"
@@ -145,6 +155,11 @@ export default function NotificationSettingsSection({
           ? `${t("settings.notification.cadence.daily")} ${t("settings.notification.cadence.at")} ${hhmm(daily_at)}`
           : t(`settings.notification.cadence.${cadence}`),
       );
+    }
+    if (kind === "week") {
+      const { weekdays, at } = settings.week;
+      const days = [...weekdays].sort((a, b) => a - b).map((day) => t(`cycle.weekdays.${WEEKDAYS[day]}`));
+      parts.push(`${days.join(", ")} ${t("settings.notification.cadence.at")} ${hhmm(at)}`);
     }
     const own = rule.service && choices.find((choice) => choice.id === rule.service);
     parts.push(rule.service ? (own ? label(own) : rule.service) : t("settings.notification.common_service"));
@@ -276,6 +291,48 @@ export default function NotificationSettingsSection({
                             />
                           </label>
                         )}
+                      </span>
+                    </div>
+                  )}
+                  {kind === "week" && (
+                    <div className="ui-setting-row">
+                      <span className="ui-row-label" id="notify-week-days">
+                        {t("settings.notification.week.days")}
+                      </span>
+                      <span
+                        className="settings-actions settings-actions-wrap"
+                        role="group"
+                        aria-labelledby="notify-week-days"
+                      >
+                        {WEEKDAYS.map((code, day) => {
+                          const checked = settings.week.weekdays.includes(day);
+                          return (
+                            <label key={code} className="settings-inline">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                // Au moins un jour : le dernier coché ne se décoche pas.
+                                disabled={checked && settings.week.weekdays.length === 1}
+                                onChange={(event) =>
+                                  setRule("week", {
+                                    weekdays: event.target.checked
+                                      ? [...settings.week.weekdays, day].sort((a, b) => a - b)
+                                      : settings.week.weekdays.filter((d) => d !== day),
+                                  })
+                                }
+                              />{" "}
+                              {t(`cycle.weekdays.${code}`)}
+                            </label>
+                          );
+                        })}
+                        <label className="settings-inline">
+                          {t("settings.notification.cadence.at")}{" "}
+                          <input
+                            type="time"
+                            value={hhmm(settings.week.at)}
+                            onChange={(event) => event.target.value && setRule("week", { at: event.target.value })}
+                          />
+                        </label>
                       </span>
                     </div>
                   )}

@@ -442,7 +442,8 @@
         "no_notify_service": "Choisissez d'abord un appareil.",
         "no_plan": "Pas encore de plan du jour : l'essai envoie sa recommandation. Calculez le plan depuis l'accueil.",
         "not_connected": "Home Assistant n'est pas connecté.",
-        "failed": "L'envoi a échoué : vérifiez le service dans Home Assistant."
+        "failed": "L'envoi a échoué : vérifiez le service dans Home Assistant.",
+        "no_week": "Pas encore de plan de la semaine : calculez le plan depuis l'accueil."
       },
       "own_service": "Appareil",
       "common_service": "l'appareil commun",
@@ -480,12 +481,19 @@
         "forecast_drop": {
           "title": "Prévision de demain en baisse",
           "help": "La production prévue pour demain baisse de plus de 30 % par rapport à la prévision la plus haute vue jusque-là."
+        },
+        "week": {
+          "title": "Planning de la semaine",
+          "help": "Les appareils prévus pour les jours à venir, jour par jour, envoyés les jours choisis. Au-delà de deux ou trois jours, le plan suit une prévision météo encore incertaine et peut changer."
         }
       },
       "sending_title": "Envoi",
       "messages_title": "Messages",
       "service_help": "Reçoit les notifications, sauf appareil propre à un message",
-      "other_help": "S'il n'est pas dans la liste"
+      "other_help": "S'il n'est pas dans la liste",
+      "week": {
+        "days": "Jours d'envoi"
+      }
     },
     "forecast": {
       "title": "Prévision solaire de repli",

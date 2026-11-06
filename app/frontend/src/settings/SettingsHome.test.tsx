@@ -20,6 +20,7 @@ function mockApi() {
         plan_gap: OFF,
         battery_full: OFF,
         forecast_drop: OFF,
+        week: { ...OFF, weekdays: [6], at: "18:00:00" },
       });
     }
     if (url === "api/settings/choices") {
