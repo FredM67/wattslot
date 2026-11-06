@@ -420,7 +420,7 @@
     "loading": "Leyendo los ajustes…",
     "error": "No se pueden leer los ajustes.",
     "title": "Ajustes",
-    "intro": "Cómo funciona la aplicación: de dónde vienen las peticiones, adónde enviar la recomendación del día, cuándo calcular el plan.",
+    "intro": "De dónde vienen las solicitudes, cuándo recalcular el plan y qué previsión solar usar como respaldo.",
     "not_connected": "Home Assistant no está conectado: las listas están vacías, los ajustes guardados siguen siendo válidos.",
     "none": "ninguno",
     "unknown": "{id} (no encontrado en Home Assistant)",
@@ -492,7 +492,8 @@
       "title": "Previsión solar de respaldo",
       "help": "Solo se usa si el panel de energía de Home Assistant no da ninguna previsión: sensores que dan una previsión de potencia en vatios (como la integración Helios).",
       "entities": "Sensores de previsión",
-      "none": "No se ha encontrado ningún sensor de previsión compatible en Home Assistant."
+      "none": "No se ha encontrado ningún sensor de previsión compatible en Home Assistant.",
+      "selected": "{count} de {total} en uso"
     },
     "scheduler": {
       "title": "Cálculo automático",

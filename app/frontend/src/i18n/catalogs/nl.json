@@ -420,7 +420,7 @@
     "loading": "Instellingen worden gelezen…",
     "error": "De instellingen kunnen niet worden gelezen.",
     "title": "Instellingen",
-    "intro": "Hoe de toepassing werkt: waar de verzoeken vandaan komen, waar het dagadvies naartoe gaat, wanneer het plan wordt berekend.",
+    "intro": "Waar verzoeken vandaan komen, wanneer het plan opnieuw wordt berekend en welke zonnevoorspelling als reserve dient.",
     "not_connected": "Home Assistant is niet verbonden: de lijsten zijn leeg, de opgeslagen instellingen blijven geldig.",
     "none": "geen",
     "unknown": "{id} (niet gevonden in Home Assistant)",
@@ -492,7 +492,8 @@
       "title": "Reserve-zonneprognose",
       "help": "Alleen gebruikt als het energiedashboard van Home Assistant geen prognose geeft: sensoren met een vermogensprognose in watt (zoals de integratie Helios).",
       "entities": "Prognosesensoren",
-      "none": "Geen geschikte prognosesensor gevonden in Home Assistant."
+      "none": "Geen geschikte prognosesensor gevonden in Home Assistant.",
+      "selected": "{count} van {total} gebruikt"
     },
     "scheduler": {
       "title": "Automatische berekening",
