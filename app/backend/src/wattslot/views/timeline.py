@@ -262,6 +262,10 @@ def statuses(
     return found, unplanned, badge
 
 
+# Mouvement de batterie affiché « 0,0 kWh » : quelques Wh au-dessus du plancher, pas montré.
+MIN_BATTERY_BAR_KWH = 0.05
+
+
 def build_timeline(
     state: Mapping[str, Any],
     actual: Mapping[str, Any] | None,
@@ -284,6 +288,7 @@ def build_timeline(
                 action="charge" if b["action"] == "charge" else "discharge",
             )
             for b in battery_blocks(battery.get("mouvements", []))
+            if b["energie_kwh"] >= MIN_BATTERY_BAR_KWH
         ]
         rows.append(
             TimelineRow(

@@ -214,16 +214,58 @@ def _active_range(data: PlanningInput, reference: Reference) -> tuple[int, int]:
     return min(s[1] for s in plans), max(s[2] + (1 if s[3] > 0 else 0) for s in plans)
 
 
+def _forecast_until_measure(data: PlanningInput) -> float | None:
+    """Production prévue de minuit à l'heure du relevé ; None sans relevé du jour."""
+    hour, measured = data.measured_at_hour, data.measured_production_kwh
+    if hour is None or measured is None:
+        return None
+    full = int(hour)
+    estimate = sum(data.production_kwh.get(h, 0.0) for h in range(full))
+    if full < 24:
+        estimate += data.production_kwh.get(full, 0.0) * (hour - full)
+    return estimate
+
+
+def forecast_ratio(data: PlanningInput, reference: Reference) -> float | None:
+    """Rapport production mesurée / prévue depuis minuit, borné ; None tant que la prévision
+    n'a pas assez produit pour en juger.
+
+    La prévision du jour peut se tromper nettement (nuages non prévus) : sans recalage, chaque
+    calcul horaire prévoyait une charge de la batterie sur un surplus qui ne venait pas."""
+    estimate = _forecast_until_measure(data)
+    measured = data.measured_production_kwh
+    if estimate is None or measured is None or estimate < reference.forecast_correction_min_kwh:
+        return None
+    return min(
+        reference.forecast_correction_max_ratio,
+        max(reference.forecast_correction_min_ratio, measured / estimate),
+    )
+
+
+def corrected_production(
+    data: PlanningInput, reference: Reference
+) -> tuple[dict[int, float], dict[int, float]]:
+    """(production, net) des heures à décider recalées sur la production mesurée du jour ; les
+    heures passées et les autres journées restent telles que prévues."""
+    production, net = dict(data.production_kwh), dict(data.net_kwh)
+    ratio = forecast_ratio(data, reference)
+    if ratio is None:
+        return production, net
+    for hour, kwh in data.production_kwh.items():
+        if hour < data.first_hour:
+            continue
+        corrected = round(kwh * ratio, 3)
+        net[hour] = round(net.get(hour, 0.0) + corrected - kwh, 3)
+        production[hour] = corrected
+    return production, net
+
+
 def _context(data: PlanningInput, reference: Reference) -> tuple[bool, bool]:
     """(prévision qui dévie, journée prioritaire pour la charge complète) : règles du
     12/10/2026 de la v1."""
     drifting = False
-    hour, measured = data.measured_at_hour, data.measured_production_kwh
-    if hour is not None and measured is not None:
-        full = int(hour)
-        estimate = sum(data.production_kwh.get(h, 0.0) for h in range(full))
-        if full < 24:
-            estimate += data.production_kwh.get(full, 0.0) * (hour - full)
+    estimate, measured = _forecast_until_measure(data), data.measured_production_kwh
+    if estimate is not None and measured is not None:
         drifting = (
             estimate >= reference.forecast_drift_min_kwh
             and (measured - estimate) / estimate * 100 < -reference.forecast_drift_percent
@@ -425,11 +467,12 @@ def from_input(data: PlanningInput, reference: Reference = REFERENCE) -> Problem
     )
     per_direction = (battery.round_trip_percent / 100) ** 0.5 if battery.round_trip_percent else 1.0
     active_from, active_to = _active_range(data, reference)
+    production, net = corrected_production(data, reference)
     return Problem(
         day=day,
         first_hour=first_hour,
-        net_kwh=dict(data.net_kwh),
-        production_kwh=dict(data.production_kwh),
+        net_kwh=net,
+        production_kwh=production,
         fixed_kwh={hour: fixed.get(hour, 0.0) for hour in range(24)},
         tasks=tasks,
         launched=launched,

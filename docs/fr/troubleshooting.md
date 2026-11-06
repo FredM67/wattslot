@@ -27,7 +27,7 @@
 
 **Le plan ne lance aucun appareil aujourd'hui.** Un cycle n'est placé que quand quelque chose le demande : une demande, une tâche de votre liste de tâches de Home Assistant, ou une récurrence (voir [Votre maison et ses règles](your-home.md#quand-un-cycle-est-dû)). Vérifiez aussi que l'équipement est **Pris en compte par le calcul**.
 
-**Le plan change dans la journée.** Il est recalculé chaque heure avec les dernières mesures et la dernière prévision : une matinée plus nuageuse décale un appareil vers l'après-midi. Les appareils déjà lancés sont gardés.
+**Le plan change dans la journée.** Il est recalculé chaque heure avec les dernières mesures et la dernière prévision : une matinée plus nuageuse décale un appareil vers l'après-midi. Quand les panneaux produisent moins (ou plus) que prévu depuis le matin, le reste de la prévision du jour suit le même rapport : le plan ne compte plus sur un soleil qui ne vient pas. Les appareils déjà lancés sont gardés.
 
 **Les valeurs mesurées sont vides pour les premières heures.** Sur une nouvelle installation, les mesures du jour commencent au démarrage de WattSlot ; la reprise de l'historique remplit les jours passés. Les données mesurées sont rafraîchies tous les quarts d'heure, ou avec **Rafraîchir les données réelles**.
 
