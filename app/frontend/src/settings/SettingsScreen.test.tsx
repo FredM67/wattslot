@@ -137,12 +137,27 @@ describe("SettingsScreen", () => {
     expect(body.device_now.enabled).toBe(false); // rien d'activé sans le demander
   });
 
+  it("résume les options d'une notification activée", async () => {
+    const user = userEvent.setup();
+    mockApi();
+    renderScreen();
+
+    const gap = await screen.findByRole("group", { name: "Écart au plan" });
+    await user.click(within(gap).getByLabelText("Écart au plan"));
+    expect(within(gap).getByText("L'appareil commun")).toBeTruthy();
+    await user.click(within(gap).getByLabelText("Heures de silence"));
+    expect(within(gap).getByText("L'appareil commun · silence de 22:00 à 07:00")).toBeTruthy();
+  });
+
   it("une fois par jour : l'heure se règle", async () => {
     const user = userEvent.setup();
     mockApi();
     renderScreen();
 
     const recommendation = await screen.findByRole("group", { name: "Recommandation du jour" });
+    // Options d'une notification seulement une fois activée.
+    expect(within(recommendation).queryByLabelText("Rythme")).toBeNull();
+    await user.click(within(recommendation).getByLabelText("Recommandation du jour"));
     expect(within(recommendation).queryByLabelText("à partir de")).toBeNull();
     await user.selectOptions(within(recommendation).getByLabelText("Rythme"), "une fois par jour");
     expect((within(recommendation).getByLabelText("à partir de") as HTMLInputElement).value).toBe("07:00");
@@ -153,9 +168,11 @@ describe("SettingsScreen", () => {
     const calls = mockApi();
     renderScreen();
 
-    const test = await screen.findByRole("button", { name: "Envoyer un essai : Recommandation du jour" });
+    const recommendation = await screen.findByRole("group", { name: "Recommandation du jour" });
+    await user.click(within(recommendation).getByLabelText("Recommandation du jour"));
+    const test = screen.getByRole("button", { name: "Envoyer un essai : Recommandation du jour" });
     expect((test as HTMLButtonElement).disabled).toBe(true);
-    await user.type(screen.getByLabelText("Autre service de notification :"), "notify.tablette");
+    await user.type(screen.getByLabelText("Autre service de notification"), "notify.tablette");
     await user.click(screen.getByRole("button", { name: "Utiliser" }));
     expect((screen.getByLabelText("Appareil commun") as HTMLSelectElement).value).toBe("notify.tablette");
 
@@ -173,6 +190,8 @@ describe("SettingsScreen", () => {
     renderScreen();
 
     await user.selectOptions(await screen.findByLabelText("Appareil commun"), "notify.mobile_app_phone");
+    const deviceNow = screen.getByRole("group", { name: "« Lancez X maintenant »" });
+    await user.click(within(deviceNow).getByLabelText("« Lancez X maintenant »"));
     await user.click(screen.getByRole("button", { name: "Envoyer un essai : « Lancez X maintenant »" }));
 
     expect(await screen.findByText("Essai envoyé : « [Essai] Lancez Lave-linge maintenant. »")).toBeTruthy();

@@ -433,7 +433,7 @@
       "title": "Notifications",
       "help": "Sent by Home Assistant to the chosen device (companion app) after each automatic run. Nothing is enabled by default, so as not to double the previous version while it still notifies.",
       "service": "Common device",
-      "other": "Other notification service:",
+      "other": "Other notification service",
       "use": "Use",
       "language": "Message language",
       "test": "Send a test",
@@ -458,7 +458,8 @@
       "quiet": {
         "label": "Quiet hours",
         "from": "from",
-        "to": "to"
+        "to": "to",
+        "summary": "quiet from {start} to {end}"
       },
       "kinds": {
         "recommendation": {
@@ -481,7 +482,11 @@
           "title": "Tomorrow's forecast drops",
           "help": "Tomorrow's planned production drops by more than 30 % against the highest forecast seen so far."
         }
-      }
+      },
+      "sending_title": "Sending",
+      "messages_title": "Messages",
+      "service_help": "Receives the notifications, unless a message has its own device",
+      "other_help": "If it is not in the list"
     },
     "forecast": {
       "title": "Fallback solar forecast",

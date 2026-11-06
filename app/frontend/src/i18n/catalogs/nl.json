@@ -433,7 +433,7 @@
       "title": "Meldingen",
       "help": "Door Home Assistant na elke automatische berekening naar het gekozen apparaat verstuurd (companion-app). Standaard staat niets aan, om de vorige versie niet te dubbelen zolang die nog meldingen stuurt.",
       "service": "Gemeenschappelijk apparaat",
-      "other": "Andere meldingsdienst:",
+      "other": "Andere meldingsdienst",
       "use": "Gebruiken",
       "language": "Taal van het bericht",
       "test": "Test versturen",
@@ -458,7 +458,8 @@
       "quiet": {
         "label": "Stille uren",
         "from": "van",
-        "to": "tot"
+        "to": "tot",
+        "summary": "stilte van {start} tot {end}"
       },
       "kinds": {
         "recommendation": {
@@ -481,7 +482,11 @@
           "title": "Prognose voor morgen daalt",
           "help": "De geplande productie voor morgen daalt met meer dan 30 % ten opzichte van de hoogste prognose tot nu toe."
         }
-      }
+      },
+      "sending_title": "Verzending",
+      "messages_title": "Berichten",
+      "service_help": "Ontvangt de meldingen, tenzij een bericht een eigen apparaat heeft",
+      "other_help": "Als het niet in de lijst staat"
     },
     "forecast": {
       "title": "Reserve-zonneprognose",

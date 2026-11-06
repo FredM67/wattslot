@@ -433,7 +433,7 @@
       "title": "Benachrichtigungen",
       "help": "Von Home Assistant nach jeder automatischen Berechnung an das gewählte Gerät gesendet (Companion-App). Standardmäßig ist nichts aktiviert, um die bisherige Version nicht zu doppeln, solange sie noch benachrichtigt.",
       "service": "Gemeinsames Gerät",
-      "other": "Anderer Benachrichtigungsdienst:",
+      "other": "Anderer Benachrichtigungsdienst",
       "use": "Verwenden",
       "language": "Sprache der Nachricht",
       "test": "Test senden",
@@ -458,7 +458,8 @@
       "quiet": {
         "label": "Ruhezeiten",
         "from": "von",
-        "to": "bis"
+        "to": "bis",
+        "summary": "Ruhe von {start} bis {end}"
       },
       "kinds": {
         "recommendation": {
@@ -481,7 +482,11 @@
           "title": "Prognose für morgen sinkt",
           "help": "Die für morgen geplante Erzeugung sinkt um mehr als 30 % gegenüber der höchsten bisher gesehenen Prognose."
         }
-      }
+      },
+      "sending_title": "Versand",
+      "messages_title": "Nachrichten",
+      "service_help": "Erhält die Benachrichtigungen, außer eine Nachricht hat ein eigenes Gerät",
+      "other_help": "Falls es nicht in der Liste steht"
     },
     "forecast": {
       "title": "Ersatz-Solarprognose",

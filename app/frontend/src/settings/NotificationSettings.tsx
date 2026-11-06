@@ -1,7 +1,8 @@
-// Section « Notifications » des réglages (lot 5.6) : appareil commun et langue, puis pour chaque
-// notification du catalogue l'activation, un appareil propre, des heures de silence et un essai ;
-// la recommandation a aussi son rythme. Réglages de /api/settings/notifications, enregistrés
-// avec le reste de la page.
+// Section « Notifications » des réglages (lot 5.6), en listes comme les autres pages : l'envoi
+// (appareil commun, autre service, langue), puis une ligne par notification du catalogue avec
+// son interrupteur. Une notification activée montre ses options en résumé (rythme, appareil,
+// heures de silence), qui se déplie pour les régler et envoyer un essai. Réglages de
+// /api/settings/notifications, enregistrés avec le reste de la page.
 
 import { useState } from "react";
 
@@ -9,6 +10,9 @@ import { putJson } from "../api";
 import { useHomeFeatures } from "../home/features";
 import { useI18n } from "../i18n/I18nProvider";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "../i18n/translate";
+import Icon from "../ui/Icon";
+import { SettingList } from "../ui/SettingRow";
+import Switch from "../ui/Switch";
 
 export type NotificationKind = "recommendation" | "device_now" | "plan_gap" | "battery_full" | "forecast_drop";
 const KINDS: NotificationKind[] = ["recommendation", "device_now", "plan_gap", "battery_full", "forecast_drop"];
@@ -52,8 +56,11 @@ const DEFAULT_QUIET: QuietHours = { start: "22:00", end: "07:00" };
 /** « 22:00:00 » → « 22:00 » pour un champ d'heure. */
 const hhmm = (value: string) => value.slice(0, 5);
 
+const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Nom d'un service dans les listes : son nom dans HA, sinon son identifiant. */
 function label(choice: Choice): string {
-  return choice.name ? `${choice.name} (${choice.id})` : choice.id;
+  return choice.name ?? choice.id;
 }
 
 function ServiceSelect({
@@ -76,7 +83,7 @@ function ServiceSelect({
       <option value="">{empty}</option>
       {!known && <option value={value}>{t("settings.unknown", { id: value })}</option>}
       {choices.map((choice) => (
-        <option key={choice.id} value={choice.id}>
+        <option key={choice.id} value={choice.id} title={choice.id}>
           {label(choice)}
         </option>
       ))}
@@ -127,162 +134,220 @@ export default function NotificationSettingsSection({
     setTests((current) => ({ ...current, [kind]: result }));
   };
 
+  // Résumé des options d'une notification : rythme, appareil, heures de silence.
+  const summary = (kind: NotificationKind) => {
+    const rule = settings[kind];
+    const parts: string[] = [];
+    if (kind === "recommendation") {
+      const { cadence, daily_at } = settings.recommendation;
+      parts.push(
+        cadence === "daily"
+          ? `${t("settings.notification.cadence.daily")} ${t("settings.notification.cadence.at")} ${hhmm(daily_at)}`
+          : t(`settings.notification.cadence.${cadence}`),
+      );
+    }
+    const own = rule.service && choices.find((choice) => choice.id === rule.service);
+    parts.push(rule.service ? (own ? label(own) : rule.service) : t("settings.notification.common_service"));
+    if (rule.quiet_hours) {
+      parts.push(
+        t("settings.notification.quiet.summary", { start: hhmm(rule.quiet_hours.start), end: hhmm(rule.quiet_hours.end) }),
+      );
+    }
+    return capitalized(parts.join(" · "));
+  };
+
   return (
     <>
-      <h3 id="notification">{t("settings.notification.title")}</h3>
-      <p>{t("settings.notification.help")}</p>
-      <label htmlFor="notify-service">{t("settings.notification.service")}</label>{" "}
-      <ServiceSelect
-        id="notify-service"
-        value={settings.service}
-        choices={choices}
-        empty={t("settings.none")}
-        onChange={(service) => onChange({ ...settings, service })}
-      />
-      <p>
-        <label>
-          {t("settings.notification.other")}{" "}
-          <input
-            value={freeService}
-            placeholder="notify.mobile_app_…"
-            onChange={(event) => setFreeService(event.target.value.trim())}
-          />
-        </label>{" "}
-        <button
-          type="button"
-          disabled={!NOTIFY_PATTERN.test(freeService)}
-          onClick={() => {
-            onChange({ ...settings, service: freeService });
-            setFreeService("");
-          }}
-        >
-          {t("settings.notification.use")}
-        </button>
-      </p>
-      <label>
-        {t("settings.notification.language")}{" "}
-        <select
-          value={settings.language}
-          onChange={(event) => onChange({ ...settings, language: event.target.value as Language })}
-        >
-          {LANGUAGES.map((code) => (
-            <option key={code} value={code}>
-              {LANGUAGE_NAMES[code]}
-            </option>
-          ))}
-        </select>
-      </label>
+      <p className="settings-note settings-intro">{t("settings.notification.help")}</p>
 
-      {KINDS.filter(
-        // Sans batterie ni panneaux, leurs messages n'ont pas lieu d'être (sauf déjà activés).
-        (kind) =>
-          settings[kind].enabled ||
-          ((kind !== "battery_full" || features.battery) && (kind !== "forecast_drop" || features.solar)),
-      ).map((kind) => {
-        const rule = settings[kind];
-        const test = tests[kind] ?? { status: "idle" };
-        const service = rule.service ?? settings.service;
-        const title = t(`settings.notification.kinds.${kind}.title`);
-        return (
-          <fieldset key={kind} className="notification-rule" aria-label={title}>
-            <legend>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={rule.enabled}
-                  onChange={(event) => setRule(kind, { enabled: event.target.checked })}
-                />{" "}
-                {title}
-              </label>
-            </legend>
-            <p className="dim">{t(`settings.notification.kinds.${kind}.help`)}</p>
-            {kind === "recommendation" && (
-              <p>
-                <label>
-                  {t("settings.notification.cadence.label")}{" "}
-                  <select
-                    value={settings.recommendation.cadence}
-                    onChange={(event) =>
-                      setRule("recommendation", { cadence: event.target.value as RecommendationRule["cadence"] })
-                    }
-                  >
-                    <option value="every_run">{t("settings.notification.cadence.every_run")}</option>
-                    <option value="when_changed">{t("settings.notification.cadence.when_changed")}</option>
-                    <option value="daily">{t("settings.notification.cadence.daily")}</option>
-                  </select>
-                </label>{" "}
-                {settings.recommendation.cadence === "daily" && (
-                  <label>
-                    {t("settings.notification.cadence.at")}{" "}
-                    <input
-                      type="time"
-                      value={hhmm(settings.recommendation.daily_at)}
-                      onChange={(event) => event.target.value && setRule("recommendation", { daily_at: event.target.value })}
-                    />
-                  </label>
-                )}
-              </p>
-            )}
-            <p>
-              <label htmlFor={`notify-service-${kind}`}>{t("settings.notification.own_service")}</label>{" "}
-              <ServiceSelect
-                id={`notify-service-${kind}`}
-                value={rule.service}
-                choices={choices}
-                empty={t("settings.notification.common_service")}
-                onChange={(value) => setRule(kind, { service: value })}
-              />
-            </p>
-            <p>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={rule.quiet_hours !== null}
-                  onChange={(event) => setRule(kind, { quiet_hours: event.target.checked ? DEFAULT_QUIET : null })}
-                />{" "}
-                {t("settings.notification.quiet.label")}
-              </label>
-              {rule.quiet_hours !== null && (
-                <>
-                  {" "}
-                  <label>
-                    {t("settings.notification.quiet.from")}{" "}
-                    <input
-                      type="time"
-                      value={hhmm(rule.quiet_hours.start)}
-                      onChange={(event) =>
-                        event.target.value &&
-                        setRule(kind, { quiet_hours: { ...rule.quiet_hours!, start: event.target.value } })
-                      }
-                    />
-                  </label>{" "}
-                  <label>
-                    {t("settings.notification.quiet.to")}{" "}
-                    <input
-                      type="time"
-                      value={hhmm(rule.quiet_hours.end)}
-                      onChange={(event) =>
-                        event.target.value &&
-                        setRule(kind, { quiet_hours: { ...rule.quiet_hours!, end: event.target.value } })
-                      }
-                    />
-                  </label>
-                </>
-              )}
-            </p>
+      <h3 className="home-summary-heading">{t("settings.notification.sending_title")}</h3>
+      <SettingList>
+        <div className="ui-setting-row">
+          <span>
+            <label className="ui-row-label" htmlFor="notify-service">
+              {t("settings.notification.service")}
+            </label>
+            <span className="ui-row-help">{t("settings.notification.service_help")}</span>
+          </span>
+          <ServiceSelect
+            id="notify-service"
+            value={settings.service}
+            choices={choices}
+            empty={t("settings.none")}
+            onChange={(service) => onChange({ ...settings, service })}
+          />
+        </div>
+        <div className="ui-setting-row">
+          <span>
+            <label className="ui-row-label" htmlFor="notify-other">
+              {t("settings.notification.other")}
+            </label>
+            <span className="ui-row-help">{t("settings.notification.other_help")}</span>
+          </span>
+          <span className="settings-actions">
+            <input
+              id="notify-other"
+              value={freeService}
+              placeholder="notify.mobile_app_…"
+              onChange={(event) => setFreeService(event.target.value.trim())}
+            />
             <button
               type="button"
-              disabled={service === null || test.status === "sending"}
-              aria-label={t("settings.notification.test_of", { name: title })}
-              onClick={() => void onTest(kind)}
+              disabled={!NOTIFY_PATTERN.test(freeService)}
+              onClick={() => {
+                onChange({ ...settings, service: freeService });
+                setFreeService("");
+              }}
             >
-              {t(test.status === "sending" ? "settings.notification.sending" : "settings.notification.test")}
+              {t("settings.notification.use")}
             </button>
-            {test.status === "sent" && <p role="status">{t("settings.notification.sent", { message: test.message })}</p>}
-            {test.status === "failed" && <p role="alert">{t(`settings.notification.failure.${test.reason}`)}</p>}
-          </fieldset>
-        );
-      })}
+          </span>
+        </div>
+        <div className="ui-setting-row">
+          <label className="ui-row-label" htmlFor="notify-language">
+            {t("settings.notification.language")}
+          </label>
+          <select
+            id="notify-language"
+            value={settings.language}
+            onChange={(event) => onChange({ ...settings, language: event.target.value as Language })}
+          >
+            {LANGUAGES.map((code) => (
+              <option key={code} value={code}>
+                {LANGUAGE_NAMES[code]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </SettingList>
+
+      <h3 className="home-summary-heading">{t("settings.notification.messages_title")}</h3>
+      <SettingList>
+        {KINDS.filter(
+          // Sans batterie ni panneaux, leurs messages n'ont pas lieu d'être (sauf déjà activés).
+          (kind) =>
+            settings[kind].enabled ||
+            ((kind !== "battery_full" || features.battery) && (kind !== "forecast_drop" || features.solar)),
+        ).map((kind) => {
+          const rule = settings[kind];
+          const test = tests[kind] ?? { status: "idle" };
+          const service = rule.service ?? settings.service;
+          const title = t(`settings.notification.kinds.${kind}.title`);
+          return (
+            <div key={kind} role="group" aria-label={title} className="notification-item">
+              <Switch
+                label={title}
+                description={t(`settings.notification.kinds.${kind}.help`)}
+                checked={rule.enabled}
+                onChange={(enabled) => setRule(kind, { enabled })}
+              />
+              {rule.enabled && (
+                <details className="settings-details notification-options">
+                  <summary>
+                    <span className="ui-row-help">{summary(kind)}</span>
+                    <Icon name="chevron-right" size={18} />
+                  </summary>
+                  {kind === "recommendation" && (
+                    <div className="ui-setting-row">
+                      <label className="ui-row-label" htmlFor="notify-cadence">
+                        {t("settings.notification.cadence.label")}
+                      </label>
+                      <span className="settings-actions settings-actions-wrap">
+                        <select
+                          id="notify-cadence"
+                          value={settings.recommendation.cadence}
+                          onChange={(event) =>
+                            setRule("recommendation", { cadence: event.target.value as RecommendationRule["cadence"] })
+                          }
+                        >
+                          <option value="every_run">{t("settings.notification.cadence.every_run")}</option>
+                          <option value="when_changed">{t("settings.notification.cadence.when_changed")}</option>
+                          <option value="daily">{t("settings.notification.cadence.daily")}</option>
+                        </select>
+                        {settings.recommendation.cadence === "daily" && (
+                          <label className="settings-inline">
+                            {t("settings.notification.cadence.at")}{" "}
+                            <input
+                              type="time"
+                              value={hhmm(settings.recommendation.daily_at)}
+                              onChange={(event) =>
+                                event.target.value && setRule("recommendation", { daily_at: event.target.value })
+                              }
+                            />
+                          </label>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  <div className="ui-setting-row">
+                    <label className="ui-row-label" htmlFor={`notify-service-${kind}`}>
+                      {t("settings.notification.own_service")}
+                    </label>
+                    <ServiceSelect
+                      id={`notify-service-${kind}`}
+                      value={rule.service}
+                      choices={choices}
+                      empty={t("settings.notification.common_service")}
+                      onChange={(value) => setRule(kind, { service: value })}
+                    />
+                  </div>
+                  <Switch
+                    label={t("settings.notification.quiet.label")}
+                    checked={rule.quiet_hours !== null}
+                    onChange={(on) => setRule(kind, { quiet_hours: on ? DEFAULT_QUIET : null })}
+                  />
+                  {rule.quiet_hours !== null && (
+                    <div className="ui-setting-row settings-times">
+                      <label className="settings-inline">
+                        {t("settings.notification.quiet.from")}{" "}
+                        <input
+                          type="time"
+                          value={hhmm(rule.quiet_hours.start)}
+                          onChange={(event) =>
+                            event.target.value &&
+                            setRule(kind, { quiet_hours: { ...rule.quiet_hours!, start: event.target.value } })
+                          }
+                        />
+                      </label>
+                      <label className="settings-inline">
+                        {t("settings.notification.quiet.to")}{" "}
+                        <input
+                          type="time"
+                          value={hhmm(rule.quiet_hours.end)}
+                          onChange={(event) =>
+                            event.target.value &&
+                            setRule(kind, { quiet_hours: { ...rule.quiet_hours!, end: event.target.value } })
+                          }
+                        />
+                      </label>
+                    </div>
+                  )}
+                  <div className="settings-foot">
+                    <span>
+                      {test.status === "sent" && (
+                        <span role="status" className="settings-ok">
+                          {t("settings.notification.sent", { message: test.message })}
+                        </span>
+                      )}
+                      {test.status === "failed" && (
+                        <span role="alert">{t(`settings.notification.failure.${test.reason}`)}</span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={service === null || test.status === "sending"}
+                      aria-label={t("settings.notification.test_of", { name: title })}
+                      onClick={() => void onTest(kind)}
+                    >
+                      {t(test.status === "sending" ? "settings.notification.sending" : "settings.notification.test")}
+                    </button>
+                  </div>
+                </details>
+              )}
+            </div>
+          );
+        })}
+      </SettingList>
     </>
   );
 }

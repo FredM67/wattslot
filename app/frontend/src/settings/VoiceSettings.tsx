@@ -81,7 +81,7 @@ export default function VoiceSettings() {
   const level = check.status === "ok" ? "ok" : check.status === "failed" ? "blocking" : "setup";
 
   return (
-    <section className="voice-settings" aria-labelledby="voice-title">
+    <section className="voice-settings settings-page" aria-labelledby="voice-title">
       <h2 id="voice-title" className="visually-hidden">
         {t("nav.voice")}
       </h2>
