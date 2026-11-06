@@ -183,25 +183,32 @@ export default function App() {
                   <UpdateBanner latest={update.latest} mode={state.health.mode} />
                 )}
                 <DiagnosticScreen onNavigate={navigate}>
-                  {state.status === "loading" && <p>{t("health.loading")}</p>}
+                  {state.status === "loading" && <p className="ui-setting-row">{t("health.loading")}</p>}
                   {state.status === "error" && (
-                    <p role="alert">{t("health.error", { status: state.detail })}</p>
+                    <p role="alert" className="ui-setting-row">
+                      {t("health.error", { status: state.detail })}
+                    </p>
                   )}
                   {state.status === "ok" && (
-                    <dl>
-                      <dt>{t("health.mode")}</dt>
-                      <dd>{t(`mode.${state.health.mode}`)}</dd>
-                      <dt>{t("health.home_assistant")}</dt>
+                    <>
+                      <div className="ui-setting-row">
+                        <span className="ui-row-label">{t("health.mode")}</span>
+                        <span className="settings-value">{t(`mode.${state.health.mode}`)}</span>
+                      </div>
                       <HomeAssistantStatus status={state.health.connections.home_assistant} />
-                      <dt>{t("app.title")}</dt>
-                      <dd>{t("health.version", { version: state.health.version })}</dd>
-                      <UpdateNotice update={update} />
-                      <dt>{t("health.support")}</dt>
-                      {/* Liens de soutien, aussi en bas des Réglages (bêta 0.9.1). */}
-                      <dd>
+                      <div className="ui-setting-row">
+                        <span>
+                          <span className="ui-row-label">{t("app.title")}</span>
+                          <UpdateNotice update={update} />
+                        </span>
+                        <span className="settings-value">{t("health.version", { version: state.health.version })}</span>
+                      </div>
+                      <div className="ui-setting-row">
+                        <span className="ui-row-label">{t("health.support")}</span>
+                        {/* Liens de soutien, aussi en bas des Réglages (bêta 0.9.1). */}
                         <SupportLinks />
-                      </dd>
-                    </dl>
+                      </div>
+                    </>
                   )}
                 </DiagnosticScreen>
               </>
@@ -218,9 +225,9 @@ export default function App() {
 function UpdateNotice({ update }: { update: UpdateState }) {
   const { t } = useI18n();
   if (update.status === "unknown") return null;
-  if (update.status === "unavailable") return <dd className="dim">{t("updates.unavailable")}</dd>;
-  if (update.status === "current") return <dd className="dim">{t("updates.current")}</dd>;
-  return <dd>{t("updates.available", { version: update.latest.version })}</dd>;
+  if (update.status === "unavailable") return <span className="ui-row-help">{t("updates.unavailable")}</span>;
+  if (update.status === "current") return <span className="ui-row-help">{t("updates.current")}</span>;
+  return <span className="ui-row-help update-row">{t("updates.available", { version: update.latest.version })}</span>;
 }
 
 /** Encadré en tête d'État de l'application quand une version plus récente existe (lot 7.1). */
@@ -280,12 +287,17 @@ function MoreLinks({ section }: { section: keyof typeof SUBPAGES }) {
 function HomeAssistantStatus({ status }: { status: HomeAssistantHealth }) {
   const { t } = useI18n();
   return (
-    <>
-      <dd>{t(`connection.${status.state}`)}</dd>
-      {status.version && <dd>{t("health.home_assistant_version", { version: status.version })}</dd>}
-      {status.state === "error" && status.error_code && (
-        <dd>{t("health.home_assistant_error", { error: connectionError(t, status.error_code) })}</dd>
-      )}
-    </>
+    <div className="ui-setting-row">
+      <span>
+        <span className="ui-row-label">{t("health.home_assistant")}</span>
+        {status.version && <span className="ui-row-help">{t("health.home_assistant_version", { version: status.version })}</span>}
+        {status.state === "error" && status.error_code && (
+          <span className="ui-row-help">{t("health.home_assistant_error", { error: connectionError(t, status.error_code) })}</span>
+        )}
+      </span>
+      <span className="settings-pill" data-state={status.state === "connected" ? "loaded" : status.state === "error" ? "error" : "not_loaded"}>
+        {t(`connection.${status.state}`)}
+      </span>
+    </div>
   );
 }

@@ -1146,7 +1146,9 @@
     "last_plan_summary": "{time}: {today} s for today, {total} s in all",
     "configuration": "Energy dashboard configuration",
     "issue_of": "{device}: {issue}",
-    "technical": "Technical detail"
+    "technical": "Technical detail",
+    "application": "Application",
+    "technical_help": "Followed sensors, storage, plan computations, forecast"
   },
   "problems": {
     "title": "What is wrong",
@@ -1203,7 +1205,11 @@
       "impossible_data_unknown": "A meter jump probably distorts the base consumption: check the history of your energy meters in Home Assistant."
     },
     "hour": "{hour}:00",
-    "checking": "Checking…"
+    "checking": "Checking…",
+    "count": "{count} problem(s) to look at",
+    "show_more": "Show the {count} others",
+    "show_less": "Show less",
+    "severity_count": "{severity}: {count}"
   },
   "report": {
     "title": "Report for a bug report",

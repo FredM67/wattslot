@@ -34,23 +34,34 @@ export default function ReportSection() {
 
   return (
     <section aria-labelledby="report-title">
-      <h3 id="report-title">{t("report.title")}</h3>
-      <p>{t("report.intro")}</p>
-      <button type="button" disabled={state.status === "loading"} onClick={() => void prepare()}>
-        {t("report.prepare")}
-      </button>
-      {state.status === "error" && <p role="alert">{t("report.error")}</p>}
-      {state.status === "ready" && (
-        <>
-          <p>{t("report.preview")}</p>
-          <pre aria-label={t("report.preview_label")} style={{ maxHeight: "20em", overflow: "auto" }}>
-            {state.text}
-          </pre>
-          <button type="button" onClick={() => download(state.text)}>
-            {t("report.download")}
+      <h3 id="report-title" className="home-summary-heading">
+        {t("report.title")}
+      </h3>
+      <div className="ui-setting-list">
+        <div className="ui-setting-row">
+          <span className="ui-row-help report-intro">{t("report.intro")}</span>
+          <button type="button" disabled={state.status === "loading"} onClick={() => void prepare()}>
+            {t("report.prepare")}
           </button>
-        </>
-      )}
+        </div>
+        {state.status === "error" && (
+          <p role="alert" className="settings-foot">
+            {t("report.error")}
+          </p>
+        )}
+        {state.status === "ready" && (
+          <div className="report-preview">
+            <p className="ui-row-help">{t("report.preview")}</p>
+            <pre aria-label={t("report.preview_label")}>{state.text}</pre>
+            <div className="settings-foot">
+              <span />
+              <button type="button" className="ui-button ui-button-primary" onClick={() => download(state.text)}>
+                {t("report.download")}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

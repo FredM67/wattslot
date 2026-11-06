@@ -1146,7 +1146,9 @@
     "last_plan_summary": "{time}: {today} s für heute, {total} s insgesamt",
     "configuration": "Konfiguration des Energie-Dashboards",
     "issue_of": "{device}: {issue}",
-    "technical": "Technisches Detail"
+    "technical": "Technisches Detail",
+    "application": "Anwendung",
+    "technical_help": "Verfolgte Sensoren, Speicher, Planberechnungen, Prognose"
   },
   "problems": {
     "title": "Was nicht stimmt",
@@ -1203,7 +1205,11 @@
       "impossible_data_unknown": "Vermutlich verfälscht ein Zählersprung den Grundverbrauch: Prüfen Sie den Verlauf Ihrer Energiezähler in Home Assistant."
     },
     "hour": "{hour}:00 Uhr",
-    "checking": "Prüfen…"
+    "checking": "Prüfen…",
+    "count": "{count} Problem(e) zu prüfen",
+    "show_more": "Die {count} weiteren anzeigen",
+    "show_less": "Weniger anzeigen",
+    "severity_count": "{severity}: {count}"
   },
   "report": {
     "title": "Bericht für eine Fehlermeldung",

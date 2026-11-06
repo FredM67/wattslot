@@ -1146,7 +1146,9 @@
     "last_plan_summary": "{time} : {today} s pour le jour, {total} s en tout",
     "configuration": "Configuration du tableau Énergie",
     "issue_of": "{device} : {issue}",
-    "technical": "Détail technique"
+    "technical": "Détail technique",
+    "application": "Application",
+    "technical_help": "Capteurs suivis, stockage, calculs du plan, prévision"
   },
   "problems": {
     "title": "Ce qui ne va pas",
@@ -1203,7 +1205,11 @@
       "impossible_data_unknown": "Un saut de compteur fausse sans doute la consommation de base : vérifiez l'historique de vos compteurs d'énergie dans Home Assistant."
     },
     "hour": "{hour} h",
-    "checking": "Vérification…"
+    "checking": "Vérification…",
+    "count": "{count} problème(s) à regarder",
+    "show_more": "Afficher les {count} autres",
+    "show_less": "Afficher moins",
+    "severity_count": "{severity} : {count}"
   },
   "report": {
     "title": "Rapport pour un signalement",
