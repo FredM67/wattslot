@@ -26,4 +26,6 @@ Everything: your home's description, your settings, your measurements and your p
 
 WattSlot only **recommends**: it never starts an appliance and never controls your battery. As a Home Assistant app it is only reachable through Home Assistant; in standalone mode, keep it on your local network.
 
-As a Home Assistant app, WattSlot also runs under its own AppArmor profile: it can only read and write its own folder and the files it needs, and it cannot start any program other than its own. It needs Home Assistant's API (to read your sensors and send notifications), but no access to the host, the network configuration or other apps.
+As a Home Assistant app, WattSlot also runs under its own AppArmor profile: it can only read and write its own folder and the files it needs, and it cannot start any program other than its own. It needs no access to the host, the network configuration or other apps.
+
+It does need Home Assistant's API, which Home Assistant only grants as a whole, with administrator rights. WattSlot uses it to read (states and their changes, Energy dashboard settings and solar forecast, history and statistics, entity and device registries, to-do lists, conversation agents) and to act in two ways only: send the notifications you set up, and pass your questions to the conversation agent you chose. It never changes an entity, an automation or a setting of Home Assistant.

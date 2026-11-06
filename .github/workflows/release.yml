@@ -35,6 +35,10 @@ jobs:
     name: Image ${{ github.ref_name }}
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # étiquettes et signature de l'image
+      id-token: write # signature Cosign sans clé, par l'identité OIDC du workflow
     steps:
       - uses: actions/checkout@v4
         with:
@@ -87,6 +91,22 @@ jobs:
             --tag "$IMAGE:latest" \
             "$source"
           docker buildx imagetools inspect "$IMAGE:${{ steps.version.outputs.version }}"
+
+      # Signature de la version (Cosign, sans clé) : le certificat lie l'image à ce workflow et à
+      # l'étiquette Git ; vérification décrite dans docs/installation.md. Seules les versions sont
+      # signées, pas chaque image de main : une signature par version garde la liste des images
+      # de GHCR lisible (statistiques, dev/tools/download_stats.py). Le Supervisor ne vérifie pas
+      # encore les signatures.
+      - uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: v3.1.4
+
+      - name: Signature de la version
+        run: |
+          digest=$(docker buildx imagetools inspect "$IMAGE:${{ steps.version.outputs.version }}"             --format '{{json .Manifest}}' | jq -r .digest)
+          [ -n "$digest" ] && [ "$digest" != null ]             || { echo "::error::Empreinte de l'image introuvable."; exit 1; }
+          cosign sign --yes "$IMAGE@$digest"
+          cosign verify "$IMAGE@$digest"             --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/release.yml@${{ github.ref }}"             --certificate-oidc-issuer https://token.actions.githubusercontent.com >/dev/null
 
   addon:
     # Dépôt d'extensions suivi par le Supervisor (adresse `…#addon`) : seulement `repository.yaml`
