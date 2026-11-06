@@ -119,6 +119,10 @@ class EntityStatus(BaseModel):
     role: Role
     last_value: float | None = None
     last_time: datetime | None = None
+    # Dernier signe de vie : relevé reçu, ou ``last_reported`` de l'instantané de HA. HA ne
+    # renvoie pas aux abonnés une valeur inchangée (prise à 0 W, compteur à l'arrêt) : sans
+    # lui, un capteur stable passait pour muet.
+    last_seen: datetime | None = None
     received: int = 0  # relevés reçus de HA
     kept: int = 0  # relevés retenus par le filtre (écrits ou en file)
 
@@ -152,6 +156,16 @@ def _timestamp(change: dict[str, Any]) -> datetime | None:
     if stamp is None:
         return None
     return datetime.fromtimestamp(float(stamp), tz=UTC)
+
+
+def _parse_time(value: Any) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        time = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return time if time.tzinfo is not None else time.replace(tzinfo=UTC)
 
 
 class Ingestor:
@@ -361,11 +375,20 @@ class Ingestor:
         """Reprise après coupure en cours : l'agrégation attend qu'elle ait comblé le trou."""
         return self._backfill_task is not None and not self._backfill_task.done()
 
+    def _last_seen(self, status: EntityStatus) -> datetime | None:
+        state = self._client.snapshot.states.get(status.entity_id) or {}
+        reported = _parse_time(state.get("last_reported") or state.get("last_updated"))
+        times = [t for t in (status.last_time, reported) if t is not None]
+        return max(times) if times else None
+
     def status(self) -> IngestionStatus:
         counters = self._counters
         return IngestionStatus(
             running=self._writer is not None and not self._writer.done() and bool(self._targets),
-            entities=sorted(counters.entities.values(), key=lambda s: s.entity_id),
+            entities=[
+                status.model_copy(update={"last_seen": self._last_seen(status)})
+                for status in sorted(counters.entities.values(), key=lambda s: s.entity_id)
+            ],
             received=counters.received,
             written=counters.written,
             pending=len(self._queue),

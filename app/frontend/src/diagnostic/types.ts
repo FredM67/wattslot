@@ -8,6 +8,7 @@ export interface EntityStatus {
   role: Role;
   last_value: number | null;
   last_time: string | null;
+  last_seen?: string | null; // dernier signe de vie, valeur inchangée comprise
   received: number;
   kept: number;
 }

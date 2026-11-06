@@ -96,11 +96,11 @@ def _sensor_problems(
     home: HomeModel, client: HomeAssistantClient | None, diagnostic: Diagnostic
 ) -> list[Problem]:
     """Capteurs de la maison enregistrée : disparus de HA, indisponibles, ou muets depuis un
-    jour (aucun relevé aujourd'hui)."""
+    jour (aucun relevé aujourd'hui, et HA n'en a reçu aucun depuis un jour, même inchangé)."""
     found = []
     states = client.snapshot.states if client is not None else None
     last_times = {
-        e.entity_id: e.last_time
+        e.entity_id: e.last_seen or e.last_time
         for e in (diagnostic.ingestion.entities if diagnostic.ingestion else [])
     }
     for device in home.devices:

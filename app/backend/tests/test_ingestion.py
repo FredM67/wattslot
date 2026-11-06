@@ -274,3 +274,39 @@ def test_restart_state_is_saved_every_few_minutes_and_on_close(tmp_path: Path) -
     ingestor.write_batch([reading(7)], start + STATE_INTERVAL + timedelta(minutes=2))
     ingestor.close()
     assert saved() == (start + timedelta(minutes=7)).isoformat()
+
+
+def test_a_stable_value_still_counts_as_a_sign_of_life(tmp_path: Path) -> None:
+    """HA ne renvoie pas aux abonnés une valeur inchangée : le ``last_reported`` de son
+    instantané dit qu'une prise à 0 W ou un compteur à l'arrêt envoie encore ses relevés."""
+    from types import SimpleNamespace
+
+    from wattslot.home_assistant import HomeSnapshot
+    from wattslot.ingestion import EntityStatus
+
+    old, recent = T0 - timedelta(days=3), T0 - timedelta(minutes=5)
+    states = {
+        "sensor.plug_power": {
+            "entity_id": "sensor.plug_power",
+            "state": "0",
+            "last_changed": old.isoformat(),
+            "last_updated": old.isoformat(),
+            "last_reported": recent.isoformat(),
+        },
+        "sensor.meter": {"entity_id": "sensor.meter", "last_updated": "pas une date"},
+    }
+    client = SimpleNamespace(snapshot=HomeSnapshot(states=states))
+    ingestor = Ingestor(client, RawStores(tmp_path))  # type: ignore[arg-type]
+    ingestor._counters.entities = {
+        "sensor.plug_power": EntityStatus(
+            entity_id="sensor.plug_power", role=Role.POWER_CONSUMED, last_time=old
+        ),
+        "sensor.meter": EntityStatus(
+            entity_id="sensor.meter", role=Role.ENERGY_CONSUMED, last_time=old
+        ),
+        "sensor.gone": EntityStatus(entity_id="sensor.gone", role=Role.ENERGY_CONSUMED),
+    }
+
+    seen = {e.entity_id: e.last_seen for e in ingestor.status().entities}
+
+    assert seen == {"sensor.gone": None, "sensor.meter": old, "sensor.plug_power": recent}

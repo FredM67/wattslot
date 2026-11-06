@@ -30,7 +30,11 @@ export default function ProblemsSection({ version, onNavigate }: {
 
   useEffect(() => {
     const controller = new AbortController();
-    getJson<Problem[]>("api/diagnostic/problems", controller.signal)
+    // Après « Vérifier à nouveau » (version > 0), le serveur relit d'abord les états de HA.
+    getJson<Problem[]>(
+      version > 0 ? "api/diagnostic/problems?refresh=true" : "api/diagnostic/problems",
+      controller.signal,
+    )
       .then((problems) => setLoad({ status: "ready", problems }))
       .catch(() => {
         if (!controller.signal.aborted) setLoad({ status: "error" });
