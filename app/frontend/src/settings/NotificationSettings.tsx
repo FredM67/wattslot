@@ -299,11 +299,7 @@ export default function NotificationSettingsSection({
                       <span className="ui-row-label" id="notify-week-days">
                         {t("settings.notification.week.days")}
                       </span>
-                      <span
-                        className="settings-actions settings-actions-wrap"
-                        role="group"
-                        aria-labelledby="notify-week-days"
-                      >
+                      <span className="notification-weekdays" role="group" aria-labelledby="notify-week-days">
                         {WEEKDAYS.map((code, day) => {
                           const checked = settings.week.weekdays.includes(day);
                           return (
@@ -325,15 +321,20 @@ export default function NotificationSettingsSection({
                             </label>
                           );
                         })}
-                        <label className="settings-inline">
-                          {t("settings.notification.cadence.at")}{" "}
-                          <input
-                            type="time"
-                            value={hhmm(settings.week.at)}
-                            onChange={(event) => event.target.value && setRule("week", { at: event.target.value })}
-                          />
-                        </label>
                       </span>
+                    </div>
+                  )}
+                  {kind === "week" && (
+                    <div className="ui-setting-row">
+                      <span className="ui-row-label">{t("settings.notification.week.at")}</span>
+                      <label className="settings-inline">
+                        {t("settings.notification.cadence.at")}{" "}
+                        <input
+                          type="time"
+                          value={hhmm(settings.week.at)}
+                          onChange={(event) => event.target.value && setRule("week", { at: event.target.value })}
+                        />
+                      </label>
                     </div>
                   )}
                   <div className="ui-setting-row">

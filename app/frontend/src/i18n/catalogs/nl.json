@@ -492,7 +492,8 @@
       "service_help": "Ontvangt de meldingen, tenzij een bericht een eigen apparaat heeft",
       "other_help": "Als het niet in de lijst staat",
       "week": {
-        "days": "Verzenddagen"
+        "days": "Verzenddagen",
+        "at": "Verzendtijd"
       }
     },
     "forecast": {

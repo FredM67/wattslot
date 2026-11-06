@@ -492,7 +492,8 @@
       "service_help": "Reçoit les notifications, sauf appareil propre à un message",
       "other_help": "S'il n'est pas dans la liste",
       "week": {
-        "days": "Jours d'envoi"
+        "days": "Jours d'envoi",
+        "at": "Heure d'envoi"
       }
     },
     "forecast": {
