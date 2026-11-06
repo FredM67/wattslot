@@ -10,7 +10,14 @@ from tests.planning.test_assemble import MODEL, TODAY, Reader, client, local
 from wattslot.aggregation import HOUR, QUARTER
 from wattslot.planning import choices
 from wattslot.planning.plan import Plan
-from wattslot.planning.runner import Context, frozen_cycles, past_pool, refresh_actual, run
+from wattslot.planning.runner import (
+    Context,
+    frozen_cycles,
+    past_pool,
+    planned_reasons,
+    refresh_actual,
+    run,
+)
 from wattslot.planning.sources import PlanningSettings
 from wattslot.planning.store import PlanStore, dumps, loads
 from wattslot.storage.database import open_database
@@ -98,6 +105,37 @@ def test_frozen_cycles_and_past_pool_come_from_the_previous_plan() -> None:
     plan = Plan.from_v1(old)
     assert [c.name for c in frozen_cycles(plan, 13)] == ["Lave-linge"]
     assert past_pool(plan, 13)[12] == "eco" and 13 not in past_pool(plan, 13)
+
+
+def test_the_reasons_of_the_previous_plan_are_kept_without_launched() -> None:
+    """D'un recalcul à l'autre, un cycle lancé garde les raisons de son placement : celles du
+    plan précédent, sans « lancé » (qui serait sinon répété)."""
+    solar = {"code": "solar_share", "params": {"percent": 80}}
+    launched = {"code": "launched", "params": {"time": "09h59"}}
+    old = {
+        "planning": [
+            {"equipement": "Lave-linge", "heure_debut": 10, "explication": {"raisons": [solar]}},
+            {
+                "equipement": "Sèche-linge",
+                "heure_debut": 12,
+                "explication": {"raisons": [launched, solar]},
+            },
+            {
+                "equipement": "Lave-vaisselle",
+                "heure_debut": 9,
+                "explication": {"raisons": [launched]},
+            },
+            {"equipement": "Chauffe-eau", "heure_debut": 13},
+        ]
+    }
+
+    found = planned_reasons(Plan.from_v1(old))
+
+    assert {name: [r.code for r in reasons] for name, reasons in found.items()} == {
+        "Lave-linge": ["solar_share"],
+        "Sèche-linge": ["solar_share"],
+    }
+    assert planned_reasons(None) == {}
 
 
 def test_a_full_run_then_an_hourly_run_then_the_next_day(tmp_path: Path) -> None:

@@ -188,9 +188,10 @@ def explain(
             explanation = Explanation(reasons=reasons)
         elif isinstance(item, Slot) and item.device in launched:
             moment = launched[item.device].start
-            explanation = Explanation(
-                reasons=[Reason(code="launched", params={"time": f"{moment:%H}h{moment:%M}"})]
-            )
+            # Le démarrage réel, puis les raisons du placement d'origine (solaire, heures
+            # creuses, départ choisi…) : sans elles, on ne savait plus pourquoi ce créneau.
+            launch = Reason(code="launched", params={"time": f"{moment:%H}h{moment:%M}"})
+            explanation = Explanation(reasons=[launch, *launched[item.device].planned])
         elif isinstance(item, Slot) and item.hourly_kwh is not None and item.device in needs:
             need = needs[item.device]
             reasons = [

@@ -53,7 +53,7 @@ from wattslot.planning.inputs import FrozenCycle, PlanningInput, RecentHistory
 from wattslot.planning.journal import CycleJournal, cycle_appliances
 from wattslot.planning.merge import BATTERY, POOL, merge_plans, pool_modes, start_soc
 from wattslot.planning.past import AggregateReader
-from wattslot.planning.plan import Plan
+from wattslot.planning.plan import Plan, Reason
 from wattslot.planning.problem import characteristics, from_input
 from wattslot.planning.recommendation import recommendation
 from wattslot.planning.sources import Forecasts, PlanningSettings, has_production
@@ -182,6 +182,19 @@ def frozen_cycles(old: Plan | None, first_hour: int) -> tuple[FrozenCycle, ...]:
     )
 
 
+def planned_reasons(old: Plan | None) -> dict[str, tuple[Reason, ...]]:
+    """Raisons du placement de chaque appareil dans le plan précédent de la journée, sans
+    « lancé » : d'un recalcul à l'autre, un cycle lancé garde celles de son placement."""
+    found: dict[str, tuple[Reason, ...]] = {}
+    for slot in old.slots if old else []:
+        if slot.explanation is None:
+            continue
+        reasons = tuple(r for r in slot.explanation.reasons if r.code != "launched")
+        if reasons:
+            found[slot.device] = reasons
+    return found
+
+
 def past_runtimes(old: Plan | None, first_hour: int) -> dict[str, dict[int, str]]:
     """Modes des durées à placer déjà planifiés plus tôt dans la journée, par équipement."""
     found: dict[str, dict[int, str]] = {}
@@ -223,7 +236,8 @@ def with_past(
     data: PlanningInput, old: Mapping[str, Any] | None, now: datetime, ctx: Context
 ) -> PlanningInput:
     """Complète l'entrée du jour avec le plan précédent de la journée et les mesures du jour."""
-    earlier = past_runtimes(Plan.from_v1(dict(old)) if old else None, data.first_hour)
+    previous = Plan.from_v1(dict(old)) if old else None
+    earlier = past_runtimes(previous, data.first_hour)
     by_hour, at_midnight, maximum = _soc_today(ctx.model, ctx.reader, now, ctx)
     current = data.battery.soc_percent
     readings: dict[str, Any] = {
@@ -250,10 +264,11 @@ def with_past(
         # précédent : la tâche est replacée à ce départ (tant qu'il est encore à venir).
         frozen=tuple(
             cycle
-            for cycle in frozen_cycles(Plan.from_v1(dict(old)) if old else None, data.first_hour)
+            for cycle in frozen_cycles(previous, data.first_hour)
             if cycle.name not in data.chosen_starts
             or data.chosen_starts[cycle.name] < data.first_hour * 60
         ),
+        planned_reasons=planned_reasons(previous),
         runtimes=tuple(
             replace(runtime, past=earlier.get(runtime.name, {})) for runtime in data.runtimes
         ),
