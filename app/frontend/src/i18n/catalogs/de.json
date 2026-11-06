@@ -12,7 +12,6 @@
     "loading": "Verbindung zur Anwendung…",
     "error": "Die Anwendung antwortet nicht ({status}).",
     "version": "Version {version}",
-    "support": "Projekt unterstützen",
     "mode": "Modus",
     "home_assistant": "Home Assistant",
     "home_assistant_version": "Home Assistant {version}",
@@ -1210,8 +1209,6 @@
     "hour": "{hour}:00 Uhr",
     "checking": "Prüfen…",
     "count": "{count} Problem(e) zu prüfen",
-    "show_more": "Die {count} weiteren anzeigen",
-    "show_less": "Weniger anzeigen",
     "severity_count": "{severity}: {count}"
   },
   "report": {
@@ -1413,7 +1410,9 @@
     "switch": "Animationen",
     "switch_help": "Reduziert, wenn Ihr Gerät es verlangt",
     "sheet_title": "Gerät anfordern",
-    "sheet_body": "Wählen Sie das Gerät und die späteste Uhrzeit."
+    "sheet_body": "Wählen Sie das Gerät und die späteste Uhrzeit.",
+    "show_more": "Die {count} weiteren anzeigen",
+    "show_less": "Weniger anzeigen"
   },
   "today": {
     "loading": "Tagesplan wird gelesen…",

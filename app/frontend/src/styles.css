@@ -3026,7 +3026,7 @@ p[role="status"]:not(.state-message) {
   display: block;
 }
 
-.problem-more {
+.show-more {
   display: flex;
   justify-content: center;
   padding: 0.3rem 0;

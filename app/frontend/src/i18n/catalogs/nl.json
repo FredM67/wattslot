@@ -12,7 +12,6 @@
     "loading": "Verbinding met de toepassing…",
     "error": "De toepassing reageert niet ({status}).",
     "version": "Versie {version}",
-    "support": "Het project steunen",
     "mode": "Modus",
     "home_assistant": "Home Assistant",
     "home_assistant_version": "Home Assistant {version}",
@@ -1210,8 +1209,6 @@
     "hour": "{hour}:00 uur",
     "checking": "Controleren…",
     "count": "{count} probleem/problemen om te bekijken",
-    "show_more": "De {count} andere tonen",
-    "show_less": "Minder tonen",
     "severity_count": "{severity}: {count}"
   },
   "report": {
@@ -1413,7 +1410,9 @@
     "switch": "Animaties",
     "switch_help": "Beperkt als je apparaat erom vraagt",
     "sheet_title": "Apparaat aanvragen",
-    "sheet_body": "Kies het apparaat en het uiterste tijdstip."
+    "sheet_body": "Kies het apparaat en het uiterste tijdstip.",
+    "show_more": "De {count} andere tonen",
+    "show_less": "Minder tonen"
   },
   "today": {
     "loading": "Dagplan wordt gelezen…",

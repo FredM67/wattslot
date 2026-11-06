@@ -11,6 +11,7 @@ import { formatNumber, type Language } from "../i18n/translate";
 import Button from "../ui/Button";
 import Sheet from "../ui/Sheet";
 import SettingRow, { SettingList } from "../ui/SettingRow";
+import { useShowMore } from "../ui/ShowMore";
 import StateMessage from "../ui/StateMessage";
 import type { HomeData } from "./HomeSummary";
 
@@ -206,7 +207,7 @@ export default function DataTab({ data }: { data: HomeData }) {
       {corrections.length > 0 && (
         <>
           <h3 className="home-summary-heading">{t("quality.corrected")}</h3>
-          {rows(corrections)}
+          <CorrectionRows list={corrections} name={name} describe={valueText} onOpen={setOpen} />
         </>
       )}
 
@@ -261,6 +262,36 @@ export default function DataTab({ data }: { data: HomeData }) {
         />
       )}
     </>
+  );
+}
+
+/** Valeurs corrigées : les premières seulement, les autres se déplient (« Afficher les N
+ * autres ») ; une longue liste ne cache pas les trous ni l'analyse en dessous. */
+function CorrectionRows({
+  list,
+  name,
+  describe,
+  onOpen,
+}: {
+  list: Group[];
+  name: (entityId: string) => string;
+  describe: (correction: Correction) => string;
+  onOpen: (group: Group) => void;
+}) {
+  const { language } = useI18n();
+  const { shown, toggle } = useShowMore(list);
+  return (
+    <SettingList>
+      {shown.map((group) => (
+        <SettingRow
+          key={group.main.id}
+          label={name(group.main.entity_id)}
+          description={`${periodText(language, group.main.period, group.main.start)} · ${describe(group.main)}`}
+          onOpen={() => onOpen(group)}
+        />
+      ))}
+      {toggle}
+    </SettingList>
   );
 }
 

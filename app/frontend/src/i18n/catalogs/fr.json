@@ -12,7 +12,6 @@
     "loading": "Connexion à l'application…",
     "error": "L'application ne répond pas ({status}).",
     "version": "Version {version}",
-    "support": "Soutenir le projet",
     "mode": "Mode",
     "home_assistant": "Home Assistant",
     "home_assistant_version": "Home Assistant {version}",
@@ -1210,8 +1209,6 @@
     "hour": "{hour} h",
     "checking": "Vérification…",
     "count": "{count} problème(s) à regarder",
-    "show_more": "Afficher les {count} autres",
-    "show_less": "Afficher moins",
     "severity_count": "{severity} : {count}"
   },
   "report": {
@@ -1413,7 +1410,9 @@
     "switch": "Animations",
     "switch_help": "Réduites si votre appareil le demande",
     "sheet_title": "Demander un appareil",
-    "sheet_body": "Choisissez l'appareil et l'heure au plus tard."
+    "sheet_body": "Choisissez l'appareil et l'heure au plus tard.",
+    "show_more": "Afficher les {count} autres",
+    "show_less": "Afficher moins"
   },
   "today": {
     "loading": "Lecture du plan du jour…",
