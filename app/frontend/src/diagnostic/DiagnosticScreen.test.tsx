@@ -258,7 +258,7 @@ describe("DiagnosticScreen", () => {
       calls.push(`${init?.method ?? "GET"} ${url}`);
       if (url === "api/connection/retry") return Response.json({});
       if (url === "api/diagnostic") return Response.json(HEALTHY);
-      if (url === "api/diagnostic/problems")
+      if (url.startsWith("api/diagnostic/problems"))
         return Response.json([
           {
             code: "ha_disconnected",
@@ -281,7 +281,9 @@ describe("DiagnosticScreen", () => {
     await screen.findByText(/Home Assistant does not respond/);
 
     expect(calls).toContain("POST api/connection/retry");
-    expect(calls.filter((call) => call === "GET api/diagnostic/problems")).toHaveLength(2);
+    // Le second passage demande au serveur de relire d'abord les états de HA.
+    expect(calls).toContain("GET api/diagnostic/problems");
+    expect(calls).toContain("GET api/diagnostic/problems?refresh=true");
   });
 
   it("montre le rapport avant de le télécharger", async () => {

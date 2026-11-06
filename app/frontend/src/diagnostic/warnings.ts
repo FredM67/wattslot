@@ -10,13 +10,14 @@ function age(diagnostic: Diagnostic, time: string | null): number {
   return time ? Date.parse(diagnostic.generated_at) - Date.parse(time) : Number.POSITIVE_INFINITY;
 }
 
-/** Entités suivies sans relevé aujourd'hui ni depuis un jour : capteur muet ou absent de HA. */
+/** Entités suivies sans relevé aujourd'hui ni signe de vie depuis un jour (valeur inchangée
+ * comprise) : capteur muet ou absent de HA. */
 export function silentEntities(diagnostic: Diagnostic): string[] {
   return (diagnostic.ingestion?.entities ?? [])
     .filter(
       (entity) =>
         (diagnostic.today[entity.entity_id] ?? 0) === 0 &&
-        age(diagnostic, entity.last_time) > SILENT_ENTITY_MS,
+        age(diagnostic, entity.last_seen ?? entity.last_time) > SILENT_ENTITY_MS,
     )
     .map((entity) => entity.entity_id);
 }

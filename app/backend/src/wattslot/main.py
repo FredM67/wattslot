@@ -1246,8 +1246,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return found, problems
 
     @app.get("/api/diagnostic/problems")
-    async def get_problems(request: Request) -> list[Problem]:
-        """Ce qui ne va pas (lot 4.8), les plus graves d'abord, avec le geste à faire."""
+    async def get_problems(request: Request, refresh: bool = False) -> list[Problem]:
+        """Ce qui ne va pas (lot 4.8), les plus graves d'abord, avec le geste à faire.
+        ``refresh`` (« Vérifier à nouveau ») relit d'abord les états de HA : leur
+        ``last_reported`` dit si un capteur à valeur stable donne encore signe de vie."""
+        client: HomeAssistantClient | None = request.app.state.home_assistant
+        if refresh and client is not None and client.status.state is ConnectionState.CONNECTED:
+            try:
+                await client.refresh_snapshot()
+            except (CommandError, NotConnectedError, TimeoutError) as error:
+                logger.warning("Relecture des états de HA impossible : %s", error)
         return (await current_problems(request))[1]
 
     @app.get("/api/diagnostic/report")
