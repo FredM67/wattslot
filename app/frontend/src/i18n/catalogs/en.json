@@ -1306,7 +1306,6 @@
     }
   },
   "assistant": {
-    "title": "Voice assistant",
     "intro": "Ask Home Assistant's Assist about your energy, with the language model you already have (Ollama on your network, or an online service). The plan is still computed by the application; the assistant reads and explains it.",
     "copy": "Copy",
     "copied": "Copied",

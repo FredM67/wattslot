@@ -1306,7 +1306,6 @@
     }
   },
   "assistant": {
-    "title": "Assistant vocal",
     "intro": "Posez vos questions sur votre énergie à l'Assist de Home Assistant, avec le modèle de langage que vous avez déjà (Ollama sur votre réseau, ou un service en ligne). Le plan reste calculé par l'application ; l'assistant le lit et l'explique.",
     "copy": "Copier",
     "copied": "Copié",

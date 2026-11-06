@@ -1,15 +1,15 @@
-// Éléments d'affichage du serveur MCP, partagés par la page Assistant et la sous-page
-// « Assistant vocal » des Réglages : résultat de la vérification, bouton « Copier ».
+// Éléments d'affichage du serveur MCP de la sous-page « Assistant vocal » des Réglages : adresse
+// en ligne de réglage, bouton « Copier ».
 
 import { useState } from "react";
 
 import { ApiError, putJson } from "../api";
 import { useI18n } from "../i18n/I18nProvider";
-import { mcpAddress, type Check, type Connection } from "./mcp";
+import { mcpAddress, type Connection } from "./mcp";
 
 /** Adresse interne du serveur MCP, à copier ou à corriger (et à oublier pour revenir à celle
- * trouvée par l'application). `label` : ligne de réglage (sous-page « Assistant vocal »), ce
- * libellé à gauche, l'adresse dessous, les boutons à droite. */
+ * trouvée par l'application), en ligne de réglage : `label` à gauche, l'adresse dessous, les
+ * boutons à droite. */
 export function McpAddress({
   connection,
   onChange,
@@ -17,7 +17,7 @@ export function McpAddress({
 }: {
   connection: Connection | null;
   onChange: (connection: Connection) => void;
-  label?: string;
+  label: string;
 }) {
   const { t } = useI18n();
   const address = mcpAddress(connection);
@@ -37,7 +37,7 @@ export function McpAddress({
   if (editing !== null) {
     return (
       <form
-        className={label ? "assistant-address-form ui-setting-row" : "assistant-address-form"}
+        className="assistant-address-form ui-setting-row"
         onSubmit={(event) => {
           event.preventDefault();
           void save(editing.trim());
@@ -65,51 +65,21 @@ export function McpAddress({
       {t("assistant.address.edit")}
     </button>
   );
-  if (label) {
-    return (
-      <div className="ui-setting-row">
-        <span>
-          <span className="ui-row-label">{label}</span>
-          {address ? (
-            <code className="ui-row-help assistant-address">{address}</code>
-          ) : (
-            <span className="ui-row-help">{t("assistant.address.unknown")}</span>
-          )}
-        </span>
-        <span className="settings-actions">
-          {address && <CopyButton text={address} label={t("assistant.copy_address")} />}
-          {edit}
-        </span>
-      </div>
-    );
-  }
   return (
-    <p>
-      {address ? (
-        <>
-          <code className="assistant-address">{address}</code> <CopyButton text={address} label={t("assistant.copy_address")} />
-        </>
-      ) : (
-        <span className="dim">{t("assistant.address.unknown")}</span>
-      )}{" "}
-      {edit}
-    </p>
-  );
-}
-
-/** État, résultat et bouton « Vérifier ». */
-export function CheckResult({ check, onVerify }: { check: Check; onVerify: () => void }) {
-  const { t } = useI18n();
-  return (
-    <>
-      {check.status === "ok" && <p role="status">{t("assistant.check.ok", { tools: check.tools })}</p>}
-      {check.status === "failed" && <p role="alert">{t("assistant.check.failed", { detail: check.detail })}</p>}
-      <p>
-        <button type="button" disabled={check.status === "checking"} onClick={onVerify}>
-          {t(check.status === "checking" ? "assistant.check.checking" : "assistant.check.run")}
-        </button>
-      </p>
-    </>
+    <div className="ui-setting-row">
+      <span>
+        <span className="ui-row-label">{label}</span>
+        {address ? (
+          <code className="ui-row-help assistant-address">{address}</code>
+        ) : (
+          <span className="ui-row-help">{t("assistant.address.unknown")}</span>
+        )}
+      </span>
+      <span className="settings-actions">
+        {address && <CopyButton text={address} label={t("assistant.copy_address")} />}
+        {edit}
+      </span>
+    </div>
   );
 }
 

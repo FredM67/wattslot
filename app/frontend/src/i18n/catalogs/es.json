@@ -1306,7 +1306,6 @@
     }
   },
   "assistant": {
-    "title": "Asistente de voz",
     "intro": "Pregunte por su energía al Assist de Home Assistant, con el modelo de lenguaje que ya tiene (Ollama en su red, o un servicio en línea). El plan lo sigue calculando la aplicación; el asistente lo lee y lo explica.",
     "copy": "Copiar",
     "copied": "Copiado",

@@ -47,65 +47,13 @@ describe("page « Assistant »", () => {
     vi.restoreAllMocks();
   });
 
-  it("mode autonome : l'adresse du navigateur, suivie de /mcp, et le prompt à copier", async () => {
+  it("ne montre que la discussion : le branchement est dans les Réglages", async () => {
     mockApi();
     renderScreen();
 
-    expect(await screen.findByText(PROMPT)).toBeInTheDocument();
-    expect(screen.getByText(`${window.location.origin}/mcp`)).toBeInTheDocument();
-    expect(screen.getByText(/ne l'ouvrez pas sur Internet/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Copier le prompt")).toBeInTheDocument(); // replié : pas de rôle accessible
-  });
-
-  it("extension : l'adresse sur le réseau interne de Home Assistant", async () => {
-    mockApi({ addon: true });
-    renderScreen();
-
-    expect(await screen.findByText("http://a0d7b954-wattslot:8100/mcp")).toBeInTheDocument();
-    expect(screen.getByText(/réseau interne de Home Assistant/)).toBeInTheDocument();
-  });
-
-  it("copie l'adresse dans le presse-papiers", async () => {
-    const user = userEvent.setup();
-    mockApi({ addon: true });
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
-    renderScreen();
-
-    await screen.findByText("Le serveur MCP répond : 9 outils.");
-    await user.click(screen.getByText("Brancher l'Assist pas à pas")); // replié une fois vérifié
-    await user.click(screen.getByRole("button", { name: "Copier l'adresse du serveur MCP" }));
-    expect(writeText).toHaveBeenCalledWith("http://a0d7b954-wattslot:8100/mcp");
-    expect(await screen.findByText("Copié")).toBeInTheDocument();
-  });
-
-  it("vérifie le serveur MCP à l'ouverture, puis sur demande, et replie le branchement", async () => {
-    const user = userEvent.setup();
-    const fetchMock = mockApi();
-    renderScreen();
-
-    expect(await screen.findByText("Le serveur MCP répond : 9 outils.")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Prêt pour l'Assist de Home Assistant" })).toBeInTheDocument();
-    const setup = screen.getByText("Brancher l'Assist pas à pas").closest("details") as HTMLDetailsElement;
-    expect(setup.open).toBe(false);
-    const methods = () =>
-      fetchMock.mock.calls
-        .filter(([url]) => String(url) === "mcp")
-        .map(([, init]) => (JSON.parse(String(init?.body)) as { method: string }).method);
-    expect(methods()).toEqual(["initialize", "tools/list"]);
-
-    await user.click(screen.getByRole("button", { name: "Vérifier" }));
-    await screen.findByText("Le serveur MCP répond : 9 outils.");
-    expect(methods()).toEqual(["initialize", "tools/list", "initialize", "tools/list"]);
-  });
-
-  it("dit quand le serveur MCP ne répond pas, branchement déplié", async () => {
-    mockApi({ mcp: false });
-    renderScreen();
-
-    expect(await screen.findByText("Le serveur MCP ne répond pas (HTTP 503).")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Le serveur de l'assistant ne répond pas" })).toBeInTheDocument();
-    expect((screen.getByText("Brancher l'Assist pas à pas").closest("details") as HTMLDetailsElement).open).toBe(true);
+    expect(await screen.findByLabelText("Votre message")).toBeInTheDocument();
+    expect(screen.queryByText("Brancher l'Assist pas à pas")).not.toBeInTheDocument();
+    expect(screen.queryByText(PROMPT)).not.toBeInTheDocument();
   });
 
   it("les questions d'exemple, par thème, remplissent la zone de saisie du chat", async () => {
@@ -127,7 +75,7 @@ describe("page « Assistant »", () => {
     window.localStorage.setItem("wattslot.language", language);
     mockApi();
     renderScreen();
-    await screen.findByText(PROMPT);
+    await screen.findByRole("textbox");
     // Le catalogue chargé à la demande est lu : plus de texte de secours en anglais à attendre.
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(document.body.textContent ?? "").not.toMatch(/\bassistant\.[a-z_.]+/);

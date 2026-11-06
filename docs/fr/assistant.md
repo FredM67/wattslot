@@ -4,11 +4,11 @@
 
 Posez vos questions sur votre énergie à l'**Assist** de Home Assistant (*« Pourquoi le lave-linge est-il prévu à 11 h ? »*, *« Combien les panneaux ont-ils produit hier ? »*, *« La batterie sera-t-elle pleine aujourd'hui ? »*) avec le modèle de langage que vous utilisez déjà : un modèle local sur votre réseau (Ollama, par exemple) ou un service en ligne. WattSlot fournit les réponses par un **serveur MCP** ; le plan, lui, est toujours calculé sans modèle de langage.
 
-L'écran **Assistant** vous guide pas à pas et vérifie le branchement.
+**Réglages › Assistant vocal** vérifie le branchement et vous guide pas à pas (**Brancher l'Assist pas à pas**, sous *Pour aller plus loin*). L'écran **Assistant** sert à discuter.
 
 ## 1. Brancher WattSlot dans Home Assistant
 
-Dans Home Assistant : **Paramètres › Appareils et services › Ajouter une intégration › Model Context Protocol**, avec l'adresse indiquée sur l'écran **Assistant** (**Copier l'adresse du serveur MCP**) :
+Dans Home Assistant : **Paramètres › Appareils et services › Ajouter une intégration › Model Context Protocol**, avec l'adresse indiquée dans **Réglages › Assistant vocal** (**Copier l'adresse du serveur MCP**) :
 
 - **Comme application de Home Assistant** : une adresse sur le réseau interne de Home Assistant, que seul Home Assistant peut joindre.
 - **En mode autonome** : `http://<adresse de WattSlot>:8100/mcp`, son adresse sur votre réseau local : seuls Home Assistant (et Open WebUI) appellent le serveur MCP, jamais votre navigateur. WattSlot la retient la première fois que vous ouvrez la page depuis votre réseau local, et l'affiche ensuite même depuis l'extérieur ; **Modifier** la corrige.
@@ -21,7 +21,7 @@ Dans Home Assistant : **Paramètres › Appareils et services › Ajouter une in
 
 ## 3. Coller le prompt conseillé
 
-**Copier le prompt** sur l'écran Assistant, puis collez-le dans les instructions de l'agent de conversation : il dit au modèle quel outil utiliser pour chaque question et de ne rien inventer. Il existe dans les six langues de l'application.
+**Copier le prompt** dans **Réglages › Assistant vocal** (pas à pas), puis collez-le dans les instructions de l'agent de conversation : il dit au modèle quel outil utiliser pour chaque question et de ne rien inventer. Il existe dans les six langues de l'application.
 
 **Vérifier** confirme que le serveur MCP répond.
 

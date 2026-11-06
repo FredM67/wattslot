@@ -1980,6 +1980,28 @@ a.ui-setting-row {
   display: none;
 }
 
+/* Branchement de l'Assist pas à pas (Réglages › Assistant vocal) : le prompt borné en hauteur. */
+.voice-steps h4 {
+  margin: 1rem 0 0.3rem;
+  font-size: 0.9rem;
+}
+
+.voice-steps ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.voice-steps .assistant-prompt {
+  max-height: 16rem;
+  overflow: auto;
+  margin: 0.5rem 0;
+  font-size: 0.8rem;
+}
+
+.voice-steps .settings-actions {
+  align-items: center;
+}
+
 /* Discussion avec l'assistant (page Assistant). */
 .assistant-chat-head {
   display: flex;
@@ -1993,18 +2015,25 @@ a.ui-setting-row {
   margin: 0;
 }
 
-/* Fil de la discussion : hauteur fixe (plus grande que la place des premières réponses), une
-   barre de défilement au-delà ; un peu moins haut sur téléphone, sous la barre du haut. */
+/* Fil de la discussion : seul contenu de la page, il prend la hauteur de l'écran moins la tête de
+   la carte et la saisie (entre 24 et 60 rem), une barre de défilement au-delà. */
 .assistant-chat-log {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  height: min(36rem, 60vh);
+  height: clamp(24rem, calc(100dvh - 22rem), 60rem);
   overflow-y: auto;
   padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg);
+}
+
+/* Téléphone : barre du haut et menu du bas en plus ; la saisie reste au-dessus du menu. */
+@media (max-width: 767px) {
+  .assistant-chat-log {
+    height: clamp(18rem, calc(100dvh - 32rem), 60rem);
+  }
 }
 
 .assistant-chat-empty {
@@ -2025,7 +2054,7 @@ a.ui-setting-row {
   margin: 0;
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius);
-  max-width: min(42rem, 85%);
+  max-width: min(52rem, 85%);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
