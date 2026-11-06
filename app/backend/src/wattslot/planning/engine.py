@@ -442,6 +442,8 @@ def simulate_plan(problem: Problem, plan: Plan) -> BatteryRun:
         battery.floor_kwh,
         first_hour=problem.first_hour,
         floor_by_hour=battery.floor_by_hour,
+        elapsed=battery.hour_elapsed,
+        elapsed_change_kwh=battery.hour_change_kwh,
     )
 
 
@@ -561,7 +563,8 @@ def day_plan(problem: Problem, plan: Plan, run: BatteryRun) -> DayPlan:
             soc_kwh={hour: round(v, 3) for hour, v in run.soc_kwh.items()},
             charged_kwh=round(sum(m.energy_kwh for m in charges), 3),
             discharged_kwh=round(sum(m.energy_kwh for m in discharges), 3),
-            start_kwh=round(battery.stored_kwh, 3),
+            # Début de la première heure : mesuré maintenant, moins sa part déjà écoulée.
+            start_kwh=round(battery.stored_kwh - battery.hour_change_kwh, 3),
             end_kwh=round(run.end_kwh, 3),
             priority=2,
             justification=(

@@ -61,3 +61,36 @@ def test_same_as_v1(seed: int) -> None:
     assert run.end_kwh == pytest.approx(end, abs=1e-9)
     assert run.soc_kwh == pytest.approx(soc, abs=1e-9)
     assert run.residual_kwh == pytest.approx(expected_net, abs=1e-9)
+
+
+def test_the_current_hour_is_measured_then_only_its_last_minutes_are_simulated() -> None:
+    """Matinée du 06/11/2026 : batterie à 13,5 % pour un plancher à 12 %, calcul à 7h59. Le
+    début de l'heure est mesuré (rien ne s'est déchargé) : seule la dernière minute peut encore
+    décharger. Avant, chaque calcul rejouait l'heure entière et prévoyait 70 Wh de décharge,
+    additionnés d'heure en heure dans le plan."""
+    capacity = 5.12
+
+    def run(elapsed: float, change: float) -> list[tuple[int, str, float]]:
+        result = simulate(
+            {7: -0.45, 8: -0.45},
+            0.135 * capacity,
+            capacity,
+            2.5,
+            2.5,
+            6,
+            22,
+            0.95,
+            0.95,
+            0.12 * capacity,
+            first_hour=7,
+            elapsed=elapsed,
+            elapsed_change_kwh=change,
+        )
+        return [(m.hour, m.action, m.energy_kwh) for m in result.movements]
+
+    assert run(59 / 60, 0.0) == [(7, "decharge", 0.008), (8, "decharge", 0.065)]
+    # Décharge mesurée sur le début de l'heure (0,1 kWh stockés, 95 Wh côté maison), puis le
+    # reste au-dessus du plancher (73 Wh) sur la seconde moitié.
+    assert run(0.5, -0.1)[0] == (7, "decharge", 0.168)
+    # Sans part écoulée : l'heure entière, comme avant.
+    assert run(0.0, 0.0)[0] == (7, "decharge", 0.073)

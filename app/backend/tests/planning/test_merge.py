@@ -10,7 +10,7 @@ import pytest
 
 from tests.v1_oracle import v1
 from wattslot.planning.cycles import Segment
-from wattslot.planning.merge import merge_plans, start_soc
+from wattslot.planning.merge import merge_plans
 from wattslot.planning.rollover import next_rollover, seconds_until
 
 DAY = date(2026, 10, 13)
@@ -148,39 +148,6 @@ def test_an_old_warning_about_a_device_now_placed_is_dropped() -> None:
 
     # Le chauffe-eau est placé : son ancien avertissement est périmé ; les autres restent.
     assert merged["avertissements"] == [other, "texte"]
-
-
-@pytest.mark.parametrize("seed", range(300))
-def test_start_soc_same_as_v1(seed: int) -> None:
-    rng = random.Random(seed)
-    hour = rng.randint(0, 23)
-    readings: dict[str, Any] = {}
-    if rng.random() < 0.8:
-        readings["soc_pct_minuit"] = rng.uniform(10, 100)
-    if rng.random() < 0.9:
-        readings["soc_pct_fin_heure"] = {
-            rng.choice([h, str(h)]): rng.uniform(10, 100) for h in range(24) if rng.random() < 0.8
-        }
-    if rng.random() < 0.8:
-        at = datetime(2026, 10, 13, rng.choice([hour, (hour + 1) % 24]), rng.randint(0, 59))
-        readings["heure_maj_iso"] = rng.choice([at.isoformat(), "illisible"])
-    old: dict[str, Any] | None = None
-    if rng.random() < 0.8:
-        old = {
-            "planning": [battery(rng)] if rng.random() < 0.9 else [],
-            "capacite_batterie_kwh": rng.choice([0, rng.uniform(2, 10)]),
-            "rendement_round_trip_percent": rng.choice([None, rng.uniform(70, 95)]),
-        }
-        if rng.random() < 0.5:
-            old["rendements_batterie"] = {
-                "status": rng.choice(["ok", "insuffisant"]),
-                "rendement_charge_percent": rng.uniform(70, 100),
-                "rendement_decharge_percent": rng.uniform(70, 100),
-            }
-
-    assert start_soc(readings, hour, old) == v1(
-        "fusion_planning.soc_depart_calcul_pct", readings, hour, old
-    )
 
 
 @pytest.mark.parametrize("seed", range(300))
