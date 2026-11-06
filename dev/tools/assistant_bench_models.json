@@ -1,0 +1,58 @@
+{
+  "_comment": "Profils du banc d'essai de l'assistant : mêmes réglages que les modèles d'Open WebUI (étiquette Ollama, réflexion, options). « think » absent : réglage par défaut du modèle.",
+  "qwen3": {
+    "model": "qwen3:4b-instruct-2507-q4_K_M",
+    "options": {"num_ctx": 16384}
+  },
+  "gemma4": {
+    "model": "gemma4:e2b-it-qat",
+    "think": true,
+    "options": {"num_ctx": 16384}
+  },
+  "gemma4-rapide": {
+    "model": "gemma4:e2b-it-qat",
+    "think": false,
+    "options": {"num_ctx": 16384}
+  },
+  "lfm3": {
+    "model": "lfm3:latest",
+    "think": true,
+    "options": {"num_ctx": 16384, "temperature": 0.1, "top_k": 50, "repeat_penalty": 1.1}
+  },
+  "lfm3-rapide": {
+    "model": "lfm3:latest",
+    "think": false,
+    "options": {"num_ctx": 16384, "temperature": 0.1, "top_k": 50, "repeat_penalty": 1.1}
+  },
+  "qwen3.5-4b": {
+    "model": "qwen3.5:4b-q4_K_M",
+    "think": false,
+    "options": {"num_ctx": 16384}
+  },
+  "qwen3.5-4b-reflexion": {
+    "model": "qwen3.5:4b-q4_K_M",
+    "think": true,
+    "options": {"num_ctx": 16384}
+  },
+  "qwen3.5-2b": {
+    "model": "qwen3.5:2b-q4_K_M",
+    "think": false,
+    "options": {"num_ctx": 16384}
+  },
+  "lfm3-q8": {
+    "model": "lfm3:1.7b-q8_0",
+    "think": true,
+    "options": {"num_ctx": 16384, "temperature": 0.1, "top_k": 50, "repeat_penalty": 1.1}
+  },
+  "lfm3-q8-rapide": {
+    "model": "lfm3:1.7b-q8_0",
+    "think": false,
+    "options": {"num_ctx": 16384, "temperature": 0.1, "top_k": 50, "repeat_penalty": 1.1}
+  },
+  "ministral-3": {"model": "ministral-3:3b", "options": {"num_ctx": 16384}},
+  "bonsai-2-9b": {"model": "bonsai-2:9b", "think": false, "options": {"num_ctx": 16384}},
+  "bonsai-2-9b-reflexion": {"model": "bonsai-2:9b", "think": true, "options": {"num_ctx": 16384}},
+  "qwen3.5-4b-mtp-reflexion": {"model": "qwen3.5:4b-mtp-q4_K_M", "think": true, "options": {"num_ctx": 16384}},
+  "qwen3-q8": {"model": "qwen3:4b-instruct-2507-q8_0", "options": {"num_ctx": 16384}},
+  "qwen3-thinking": {"model": "qwen3:4b-thinking-2507-q4_K_M", "think": true, "options": {"num_ctx": 16384}}
+}

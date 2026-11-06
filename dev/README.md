@@ -86,6 +86,27 @@ python -m tools.demo serve --data /tmp/wattslot-demo/fr --port 8100
 
 (avec `PYTHONPATH` sur `app/backend/src` et `dev/`, ce que fait `tools.screenshots`). L'heure du serveur est figée, pas celle du navigateur.
 
+## Banc d'essai de l'assistant
+
+`dev/tools/assistant_bench.py` pose les 18 questions de la suite de test de l'assistant à des modèles locaux d'Ollama, plusieurs fois chacune, avec les outils du serveur MCP d'une installation de WattSlot (sans Open WebUI). Il ne dépend que de la bibliothèque standard de Python.
+
+```bash
+python dev/tools/assistant_bench.py --wattslot http://192.0.2.10:8100 --ollama http://192.0.2.20:11434 --models qwen3,lfm3 --runs 3
+```
+
+- **Profils** (`dev/tools/assistant_bench_models.json`) : étiquette Ollama, réflexion et options de chaque modèle, comme ses réglages dans Open WebUI.
+- **Options** : `--questions 6,12,17` (scénarios à jouer ; `13-15` pour la conversation sur trois tours), `--runs`, `--lang`, `--prompt-file` (au lieu du prompt conseillé de l'application).
+- **Variantes** : `--variants variantes.json` remplace côté banc des descriptions d'outils ou le prompt, pour comparer des formulations sans reconstruire l'image. Chaque variante est une colonne du résumé, à côté de la formulation « actuelle » du serveur, et les variantes alternent à chaque essai :
+
+  ```json
+  {"courte": {"tools": {"get_forecast": "Forecast of a day."}},
+   "rappel": {"prompt_append": "Pour une date future, consulte la prévision."}}
+  ```
+
+  `prompt` remplace le prompt entier, `prompt_append` l'allonge ; un outil inconnu arrête le banc avant le premier tour.
+- **Aucune demande déposée** : une confirmation de `request_device` n'est pas transmise (sauf `--allow-requests`) et compte comme un défaut grave.
+- **Rapport** dans `dev/tools/.bench/` (ignoré par git, les réponses citent les équipements de la maison) : un résumé Markdown, une pastille par essai et la durée médiane, le total des pastilles, puis chaque réponse avec ses outils et la durée de son dernier passage (celle du panneau ⓘ d'Open WebUI, qui ne compte pas les passages avant les outils) ; le détail en JSON Lines. Les pastilles ne relèvent que les défauts visibles (aucun outil, nom technique, marqueur, date brute, réponse en anglais, réponse vide) : le fond se juge à la lecture.
+
 ## Repartir de zéro
 
 ```bash
