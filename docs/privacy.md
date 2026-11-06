@@ -25,3 +25,5 @@ Everything: your home's description, your settings, your measurements and your p
 ## Safety
 
 WattSlot only **recommends**: it never starts an appliance and never controls your battery. As a Home Assistant app it is only reachable through Home Assistant; in standalone mode, keep it on your local network.
+
+As a Home Assistant app, WattSlot also runs under its own AppArmor profile: it can only read and write its own folder and the files it needs, and it cannot start any program other than its own. It needs Home Assistant's API (to read your sensors and send notifications), but no access to the host, the network configuration or other apps.
