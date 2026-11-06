@@ -2951,3 +2951,24 @@ p[role="status"]:not(.state-message) {
 .settings-page .ui-setting-row select {
   max-width: 100%;
 }
+
+/* « Langue et affichage » : le choix du thème sous son intertitre, sans cadre. */
+.settings-page .theme-picker {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings-page .theme-picker > legend {
+  margin: 0.75rem 0.25rem 0.45rem;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.settings-page .theme-option {
+  border-radius: 1rem;
+}

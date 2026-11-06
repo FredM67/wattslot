@@ -97,7 +97,7 @@ export default function SettingsScreen({ page = "main" }: { page?: SettingsPage 
   if (page === "voice") return <VoiceSettings />;
   if (page === "display") {
     return (
-      <section aria-labelledby="display-title">
+      <section className="settings-page" aria-labelledby="display-title">
         <h2 id="display-title" className="visually-hidden">
           {t("settings.appearance.title")}
         </h2>

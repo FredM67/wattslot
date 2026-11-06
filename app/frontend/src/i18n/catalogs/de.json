@@ -535,7 +535,10 @@
           "name": "Dämmerung",
           "help": "Dunkel, Violett und Koralle"
         }
-      }
+      },
+      "region_title": "Sprache und Währung",
+      "charts_title": "Diagramme",
+      "language_help": "Sprache der Oberfläche, auf diesem Gerät"
     },
     "currency": {
       "label": "Währung",
