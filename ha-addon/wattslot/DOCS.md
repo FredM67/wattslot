@@ -34,7 +34,7 @@ The add-on connects to Home Assistant by itself: no token or address to enter.
 
 ## Voice assistant
 
-Ask Home Assistant's Assist about your plan, with the language model you already use in Home Assistant (Ollama on your network, or an online service). Open the **Assistant** page of the add-on: it gives the address to enter in the **Model Context Protocol** integration, the settings for the conversation agent and a prompt to paste. The assistant reads the plan; the only thing it does on its own is file a request, after confirming it with you.
+Ask Home Assistant's Assist about your plan, with the language model you already use in Home Assistant (Ollama on your network, or an online service). Open **Settings › Voice assistant** in the add-on: it gives the address to enter in the **Model Context Protocol** integration, the settings for the conversation agent and a prompt to paste. The assistant reads the plan; the only thing it does on its own is file a request, after confirming it with you.
 
 ## Configuration
 
@@ -64,6 +64,17 @@ restore a backup, the add-on puts the copy back in place at startup.
 The add-on checks itself every 30 seconds. With **Watchdog** turned on (add-on page), Home
 Assistant restarts it if it stops answering. When stopped or updated, the add-on has 30 seconds
 to write everything to disk.
+
+## Security
+
+The add-on runs under its own AppArmor profile: it can only read and write its own folder and the files it needs, and cannot start any program other than its own. It needs no access to the host, the network configuration or other add-ons, and its interface is only reachable through Home Assistant (ingress).
+
+**Home Assistant API.** The add-on asks for access to Home Assistant's API (`homeassistant_api`), which Home Assistant grants as a whole, with administrator rights: there is no narrower option. WattSlot uses it to:
+
+- **read**: the states of your entities and their changes, the Energy dashboard settings and solar forecast, the history and statistics, the entity and device registries (to find your appliances), your to-do lists, and the list of conversation agents;
+- **act**, in two ways only: send the notifications you set up (`notify` services), and pass your questions to the conversation agent you chose for the voice assistant.
+
+It never starts an appliance, never controls your battery and never changes an entity, an automation or a setting of Home Assistant.
 
 ## Help
 
