@@ -211,6 +211,30 @@ describe("DiagnosticScreen", () => {
     expect(document.querySelector("details")?.open).toBe(false); // détail technique replié
   });
 
+  it("résume les problèmes et replie une longue liste", async () => {
+    const watch = (entity: string): Problem => ({
+      code: "sensor_silent",
+      severity: "watch",
+      params: { device: "Roof", role: "EnergyProduced", entity },
+      target: "home",
+      doc: null,
+    });
+    mockApi(HEALTHY, [
+      { code: "no_forecast", severity: "blocking", params: {}, target: "home#solar", doc: null },
+      ...["sensor.a", "sensor.b", "sensor.c", "sensor.d"].map(watch),
+    ]);
+    renderScreen();
+
+    expect(await screen.findByText("5 problem(s) to look at")).toBeInTheDocument();
+    expect(screen.getByText("Blocks the plan: 1 · To watch: 4")).toBeInTheDocument();
+    // Les trois premiers seulement, les plus graves d'abord ; les autres se déplient.
+    expect(screen.getAllByRole("listitem").filter((item) => item.classList.contains("problem"))).toHaveLength(3);
+    await userEvent.click(screen.getByRole("button", { name: "Show the 2 others" }));
+    expect(screen.getAllByRole("listitem").filter((item) => item.classList.contains("problem"))).toHaveLength(5);
+    await userEvent.click(screen.getByRole("button", { name: "Show less" }));
+    expect(screen.getAllByRole("listitem").filter((item) => item.classList.contains("problem"))).toHaveLength(3);
+  });
+
   it("nomme le saut de compteur derrière un jour non calculé", async () => {
     mockApi(HEALTHY, [
       {

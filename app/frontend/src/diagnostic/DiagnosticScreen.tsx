@@ -4,6 +4,8 @@ import { getJson } from "../api";
 import { retryConnection } from "../connection/service";
 import { useI18n } from "../i18n/I18nProvider";
 import { refreshStatus } from "../nav/status";
+import Icon from "../ui/Icon";
+import { SettingList } from "../ui/SettingRow";
 import ForecastComparison from "./ForecastComparison";
 import ProblemsSection from "./ProblemsSection";
 import ReportSection from "./ReportSection";
@@ -15,8 +17,9 @@ const REFRESH_MS = 30_000;
 
 type LoadState = { status: "loading" } | { status: "ready"; diagnostic: Diagnostic } | { status: "error" };
 
-// Diagnostic pour tous (lot 4.8) : ce qui ne va pas et le rapport d'abord, le détail technique
-// replié en dessous (avec l'état de l'application, passé par la page).
+// Diagnostic pour tous (lot 4.8), en listes comme les autres sous-pages des Réglages : l'état et
+// ce qui ne va pas d'abord, puis l'application (lignes passées par la page : mode, Home
+// Assistant, version, soutien), le rapport, et le détail technique replié tout en bas.
 export default function DiagnosticScreen({ onNavigate, children }: {
   onNavigate: (target: string) => void;
   children?: ReactNode;
@@ -36,18 +39,34 @@ export default function DiagnosticScreen({ onNavigate, children }: {
   };
 
   return (
-    <section>
+    <section className="settings-page diagnostic-page">
       <h2 className="visually-hidden">{t("diagnostic.title")}</h2>
-      <ProblemsSection version={version} onNavigate={onNavigate} />
-      <button type="button" disabled={checking} onClick={() => void checkAgain()}>
-        {t(checking ? "problems.checking" : "problems.refresh")}
-      </button>
+      <ProblemsSection
+        version={version}
+        onNavigate={onNavigate}
+        checking={checking}
+        onCheck={() => void checkAgain()}
+      />
+      {children && (
+        <>
+          <h3 className="home-summary-heading">{t("diagnostic.application")}</h3>
+          <SettingList>{children}</SettingList>
+        </>
+      )}
       <ReportSection />
-      <details>
-        <summary>{t("diagnostic.technical")}</summary>
-        {children}
-        <TechnicalDetail />
-      </details>
+      <h3 className="home-summary-heading">{t("nav.more")}</h3>
+      <SettingList>
+        <details className="ui-setting-row settings-details diagnostic-technical">
+          <summary>
+            <span>
+              <span className="ui-row-label">{t("diagnostic.technical")}</span>
+              <span className="ui-row-help">{t("diagnostic.technical_help")}</span>
+            </span>
+            <Icon name="chevron-right" size={18} />
+          </summary>
+          <TechnicalDetail />
+        </details>
+      </SettingList>
     </section>
   );
 }
@@ -110,6 +129,7 @@ function TechnicalDetail() {
               age: formatAge(language, ingestion.last_batch_at, diagnostic.generated_at),
             })}
           </p>
+          <div className="table-scroll">
           <table>
             <thead>
               <tr>
@@ -136,6 +156,7 @@ function TechnicalDetail() {
               ))}
             </tbody>
           </table>
+          </div>
         </>
       )}
 

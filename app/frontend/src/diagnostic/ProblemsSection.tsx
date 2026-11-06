@@ -1,12 +1,15 @@
 // « Ce qui ne va pas » (lot 4.8) : le premier niveau du diagnostic. Les problèmes sont calculés
 // par l'application (/api/diagnostic/problems), les plus graves d'abord ; chacun dit le geste à
-// faire et où : une page de l'application ou la documentation de Home Assistant.
+// faire et où : une page de l'application ou la documentation de Home Assistant. En tête, une
+// carte résume l'état (pastille, nombre par gravité, « Vérifier à nouveau ») ; la liste ne montre
+// que les premiers problèmes, les autres se déplient : une longue liste ne cache pas le reste.
 
 import { useEffect, useState } from "react";
 
 import { getJson } from "../api";
 import { connectionErrorParams } from "../connection/service";
 import { useI18n } from "../i18n/I18nProvider";
+import { statusLevel } from "../nav/status";
 import { longDate } from "../plan/format";
 import { formatNumber } from "./format";
 
@@ -21,12 +24,19 @@ export interface Problem {
 
 type Load = { status: "loading" } | { status: "ready"; problems: Problem[] } | { status: "error" };
 
-export default function ProblemsSection({ version, onNavigate }: {
+/** Problèmes montrés avant « Afficher les autres ». */
+export const VISIBLE_PROBLEMS = 3;
+const SEVERITIES: Problem["severity"][] = ["blocking", "degraded", "watch"];
+
+export default function ProblemsSection({ version, onNavigate, checking, onCheck }: {
   version: number;
   onNavigate: (target: string) => void;
+  checking: boolean;
+  onCheck: () => void;
 }) {
   const { t, language } = useI18n();
   const [load, setLoad] = useState<Load>({ status: "loading" });
+  const [all, setAll] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -77,36 +87,77 @@ export default function ProblemsSection({ version, onNavigate }: {
     });
   };
 
+  const problems = load.status === "ready" ? load.problems : [];
+  const level = load.status === "error" ? "blocking" : load.status === "ready" ? statusLevel(problems) : "setup";
+  const title =
+    load.status === "loading"
+      ? t("problems.loading")
+      : load.status === "error"
+        ? t("problems.error")
+        : problems.length === 0
+          ? t("problems.none")
+          : t("problems.count", { count: problems.length });
+  // « Bloque le plan : 1 · À surveiller : 2 »
+  const counts = SEVERITIES.map((severity) => [severity, problems.filter((p) => p.severity === severity).length] as const)
+    .filter(([, count]) => count > 0)
+    .map(([severity, count]) => t("problems.severity_count", { severity: t(`problems.severity.${severity}`), count }))
+    .join(" · ");
+  const shown = all ? problems : problems.slice(0, VISIBLE_PROBLEMS);
+  const hidden = problems.length - VISIBLE_PROBLEMS;
+
   return (
-    <section aria-labelledby="problems-title">
-      <h3 id="problems-title">{t("problems.title")}</h3>
-      {load.status === "loading" && <p>{t("problems.loading")}</p>}
-      {load.status === "error" && <p role="alert">{t("problems.error")}</p>}
-      {load.status === "ready" && load.problems.length === 0 && <p role="status">{t("problems.none")}</p>}
-      {load.status === "ready" && load.problems.length > 0 && (
-        <ul>
-          {load.problems.map((problem, index) => (
-            <li key={`${problem.code}-${index}`} data-severity={problem.severity}>
-              <strong>{t(`problems.severity.${problem.severity}`)}</strong> : {message(problem)}
-              {t(`problems.action.${problem.code}`) !== `problems.action.${problem.code}` && (
-                <>
-                  <br />
-                  {t(`problems.action.${problem.code}`)}
-                </>
-              )}{" "}
-              {problem.target && (
-                <button type="button" onClick={() => onNavigate(problem.target as string)}>
-                  {t("problems.open")}
+    <section aria-label={t("problems.title")}>
+      <div className="ui-card settings-state">
+        <span className="status-dot" data-level={level} aria-hidden="true" />
+        <span className="settings-state-text">
+          <span className="ui-row-label" role={load.status === "error" ? "alert" : "status"}>
+            {title}
+          </span>
+          {counts && <span className="ui-row-help">{counts}</span>}
+        </span>
+        <button type="button" className="ui-button ui-button-quiet" disabled={checking} onClick={onCheck}>
+          {t(checking ? "problems.checking" : "problems.refresh")}
+        </button>
+      </div>
+      {problems.length > 0 && (
+        <>
+          <h3 className="home-summary-heading">{t("problems.title")}</h3>
+          <ul className="ui-setting-list problem-list">
+            {shown.map((problem, index) => {
+              const action = t(`problems.action.${problem.code}`);
+              return (
+                <li key={`${problem.code}-${index}`} className="ui-setting-row problem" data-severity={problem.severity}>
+                  <span>
+                    <span className="problem-severity">{t(`problems.severity.${problem.severity}`)}</span>
+                    <span className="problem-message">{message(problem)}</span>
+                    {action !== `problems.action.${problem.code}` && <span className="ui-row-help">{action}</span>}
+                  </span>
+                  {(problem.target || problem.doc) && (
+                    <span className="settings-actions">
+                      {problem.target && (
+                        <button type="button" onClick={() => onNavigate(problem.target as string)}>
+                          {t("problems.open")}
+                        </button>
+                      )}
+                      {problem.doc && (
+                        <a className="ui-button ui-button-quiet" href={problem.doc} target="_blank" rel="noreferrer">
+                          {t(problem.code === "internal_error" ? "problems.ticket" : "problems.doc")}
+                        </a>
+                      )}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+            {hidden > 0 && (
+              <li className="problem-more">
+                <button type="button" className="ui-button ui-button-quiet" aria-expanded={all} onClick={() => setAll(!all)}>
+                  {all ? t("problems.show_less") : t("problems.show_more", { count: hidden })}
                 </button>
-              )}{" "}
-              {problem.doc && (
-                <a href={problem.doc} target="_blank" rel="noreferrer">
-                  {t(problem.code === "internal_error" ? "problems.ticket" : "problems.doc")}
-                </a>
-              )}
-            </li>
-          ))}
-        </ul>
+              </li>
+            )}
+          </ul>
+        </>
       )}
     </section>
   );

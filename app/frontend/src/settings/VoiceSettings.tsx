@@ -86,9 +86,9 @@ export default function VoiceSettings() {
         {t("nav.voice")}
       </h2>
 
-      <div className="ui-card voice-state">
+      <div className="ui-card settings-state">
         <span className="status-dot" data-level={level} aria-hidden="true" />
-        <span className="voice-state-text">
+        <span className="settings-state-text">
           <span className="ui-row-label">{t(checkTitle(check))}</span>
           {check.status === "ok" && (
             <span role="status" className="ui-row-help">
@@ -190,7 +190,7 @@ function McpRows({ home }: { home: AssistantHome }) {
               <span className="ui-row-label">{t("settings.voice.mcp")}</span>
               <span className="ui-row-help">{entry.title}</span>
             </span>
-            <span className="voice-pill" data-state={state}>
+            <span className="settings-pill" data-state={state}>
               {t(`settings.voice.mcp_states.${state}`)}
             </span>
           </div>

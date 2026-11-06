@@ -1146,7 +1146,9 @@
     "last_plan_summary": "{time}: {today} s per oggi, {total} s in tutto",
     "configuration": "Configurazione della dashboard energia",
     "issue_of": "{device}: {issue}",
-    "technical": "Dettaglio tecnico"
+    "technical": "Dettaglio tecnico",
+    "application": "Applicazione",
+    "technical_help": "Sensori seguiti, archiviazione, calcoli del piano, previsione"
   },
   "problems": {
     "title": "Cosa non va",
@@ -1203,7 +1205,11 @@
       "impossible_data_unknown": "Probabilmente un salto del contatore falsa il consumo di base: controlli lo storico dei contatori di energia in Home Assistant."
     },
     "hour": "{hour}:00",
-    "checking": "Verifica…"
+    "checking": "Verifica…",
+    "count": "{count} problema/i da guardare",
+    "show_more": "Mostra gli altri {count}",
+    "show_less": "Mostra meno",
+    "severity_count": "{severity}: {count}"
   },
   "report": {
     "title": "Rapporto per una segnalazione di errore",

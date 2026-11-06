@@ -2736,25 +2736,25 @@ p[role="status"]:not(.state-message) {
 
 /* Sous-pages des Réglages en listes (« Assistant vocal », « Notifications ») : les contrôles à
    droite passent sous leur libellé sur un écran étroit. « Assistant vocal » : carte d'état. */
-.voice-state {
+.settings-state {
   display: flex;
   align-items: center;
   gap: 0.9rem;
   padding: 0.9rem 1.1rem;
 }
 
-.voice-state .status-dot {
+.settings-state .status-dot {
   width: 0.8rem;
   height: 0.8rem;
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 20%, transparent);
 }
 
-.voice-state .status-dot[data-level="blocking"] {
+.settings-state .status-dot[data-level="blocking"] {
   background: var(--danger);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 20%, transparent);
 }
 
-.voice-state-text {
+.settings-state-text {
   flex: 1;
   min-width: 0;
 }
@@ -2783,7 +2783,7 @@ p[role="status"]:not(.state-message) {
   text-transform: none;
 }
 
-.voice-pill {
+.settings-pill {
   font-size: 0.8rem;
   font-weight: 700;
   padding: 0.1rem 0.6rem;
@@ -2793,11 +2793,11 @@ p[role="status"]:not(.state-message) {
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
-.voice-pill[data-state="error"] {
+.settings-pill[data-state="error"] {
   color: var(--danger);
 }
 
-.voice-pill[data-state="not_loaded"] {
+.settings-pill[data-state="not_loaded"] {
   color: var(--text-dim);
 }
 
@@ -2979,4 +2979,155 @@ p[role="status"]:not(.state-message) {
 .settings-page > .home-summary-heading,
 .settings-page .home-summary-heading {
   margin-top: 1.25rem;
+}
+
+/* État de l'application : valeurs à droite, problèmes en liste repliable, rapport et détail
+   technique contenus dans leur carte. */
+.settings-value {
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.settings-page .update-banner {
+  margin-bottom: 1rem;
+}
+
+.problem-list {
+  margin: 0;
+  list-style: none;
+}
+
+.problem {
+  align-items: flex-start;
+  padding: 0.75rem 0;
+}
+
+.problem-severity {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  color: var(--text-dim);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.problem[data-severity="blocking"] .problem-severity {
+  color: var(--danger);
+}
+
+.problem[data-severity="degraded"] .problem-severity {
+  color: var(--warning);
+}
+
+.problem-message {
+  display: block;
+}
+
+.problem-more {
+  display: flex;
+  justify-content: center;
+  padding: 0.3rem 0;
+}
+
+.report-intro {
+  flex: 1 1 14rem;
+}
+
+.report-preview {
+  padding: 0.25rem 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.report-preview pre {
+  max-height: 16rem;
+  overflow: auto;
+  margin: 0.4rem 0 0;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--bg);
+  font-size: 0.8rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.diagnostic-technical h3 {
+  margin: 1.1rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.diagnostic-technical table {
+  display: table; /* les tableaux sont des blocs défilants ailleurs ; ici, le cadre défile */
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.diagnostic-technical :is(th, td) {
+  padding: 0.35rem 0.5rem 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.diagnostic-technical dl {
+  display: grid;
+  grid-template-columns: minmax(10rem, max-content) 1fr;
+  gap: 0.3rem 1rem;
+  margin: 0;
+}
+
+.diagnostic-technical dl > div {
+  display: contents;
+}
+
+.diagnostic-technical dd {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.diagnostic-technical dl > div > dd + dd {
+  grid-column: 2;
+}
+
+/* Titre de la carte d'état : vert seulement quand tout va bien. */
+.settings-state .settings-state-text .ui-row-label {
+  color: var(--text);
+}
+
+.settings-state .status-dot[data-level="ok"] + .settings-state-text .ui-row-label {
+  color: var(--ok);
+}
+
+.settings-state .status-dot[data-level="degraded"] {
+  background: var(--warning);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning) 20%, transparent);
+}
+
+.problem a.ui-button {
+  text-decoration: none;
+}
+
+/* Écran étroit : « Vérifier à nouveau » passe sous le texte plutôt que de l'écraser. */
+.settings-state {
+  flex-wrap: wrap;
+}
+
+.settings-state .settings-state-text {
+  flex: 1 1 12rem;
+}
+
+/* Tableau des entités (des dizaines de lignes) : hauteur bornée, en-tête fixe. */
+.diagnostic-technical .table-scroll {
+  max-height: 22rem;
+  overflow: auto;
+}
+
+.diagnostic-technical thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
 }

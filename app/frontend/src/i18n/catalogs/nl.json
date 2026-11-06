@@ -1146,7 +1146,9 @@
     "last_plan_summary": "{time}: {today} s voor vandaag, {total} s in totaal",
     "configuration": "Configuratie van het energiedashboard",
     "issue_of": "{device}: {issue}",
-    "technical": "Technisch detail"
+    "technical": "Technisch detail",
+    "application": "Applicatie",
+    "technical_help": "Gevolgde sensoren, opslag, planberekeningen, voorspelling"
   },
   "problems": {
     "title": "Wat er niet klopt",
@@ -1203,7 +1205,11 @@
       "impossible_data_unknown": "Waarschijnlijk vertekent een metersprong het basisverbruik: controleer de geschiedenis van uw energiemeters in Home Assistant."
     },
     "hour": "{hour}:00 uur",
-    "checking": "Controleren…"
+    "checking": "Controleren…",
+    "count": "{count} probleem/problemen om te bekijken",
+    "show_more": "De {count} andere tonen",
+    "show_less": "Minder tonen",
+    "severity_count": "{severity}: {count}"
   },
   "report": {
     "title": "Rapport voor een foutmelding",
