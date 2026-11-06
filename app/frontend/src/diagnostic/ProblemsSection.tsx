@@ -11,6 +11,7 @@ import { connectionErrorParams } from "../connection/service";
 import { useI18n } from "../i18n/I18nProvider";
 import { statusLevel } from "../nav/status";
 import { longDate } from "../plan/format";
+import { useShowMore, VISIBLE_ITEMS } from "../ui/ShowMore";
 import { formatNumber } from "./format";
 
 export interface Problem {
@@ -24,8 +25,6 @@ export interface Problem {
 
 type Load = { status: "loading" } | { status: "ready"; problems: Problem[] } | { status: "error" };
 
-/** Problèmes montrés avant « Afficher les autres ». */
-export const VISIBLE_PROBLEMS = 3;
 const SEVERITIES: Problem["severity"][] = ["blocking", "degraded", "watch"];
 
 export default function ProblemsSection({ version, onNavigate, checking, onCheck }: {
@@ -36,7 +35,6 @@ export default function ProblemsSection({ version, onNavigate, checking, onCheck
 }) {
   const { t, language } = useI18n();
   const [load, setLoad] = useState<Load>({ status: "loading" });
-  const [all, setAll] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -102,8 +100,7 @@ export default function ProblemsSection({ version, onNavigate, checking, onCheck
     .filter(([, count]) => count > 0)
     .map(([severity, count]) => t("problems.severity_count", { severity: t(`problems.severity.${severity}`), count }))
     .join(" · ");
-  const shown = all ? problems : problems.slice(0, VISIBLE_PROBLEMS);
-  const hidden = problems.length - VISIBLE_PROBLEMS;
+  const { shown, toggle } = useShowMore(problems, VISIBLE_ITEMS, "li");
 
   return (
     <section aria-label={t("problems.title")}>
@@ -149,13 +146,7 @@ export default function ProblemsSection({ version, onNavigate, checking, onCheck
                 </li>
               );
             })}
-            {hidden > 0 && (
-              <li className="problem-more">
-                <button type="button" className="ui-button ui-button-quiet" aria-expanded={all} onClick={() => setAll(!all)}>
-                  {all ? t("problems.show_less") : t("problems.show_more", { count: hidden })}
-                </button>
-              </li>
-            )}
+            {toggle}
           </ul>
         </>
       )}

@@ -5,7 +5,6 @@ import { returnedFromHomeAssistant } from "./connection/address";
 import { connectionError } from "./connection/service";
 import PlanScreen from "./plan/PlanScreen";
 import PlanActions, { CurvesCustomizeButton } from "./plan/PlanActions";
-import { SupportLinks } from "./settings/BetaCards";
 import StartScreen from "./start/StartScreen";
 import { useI18n } from "./i18n/I18nProvider";
 import MainMenu from "./nav/MainMenu";
@@ -202,11 +201,6 @@ export default function App() {
                           <UpdateNotice update={update} />
                         </span>
                         <span className="settings-value">{t("health.version", { version: state.health.version })}</span>
-                      </div>
-                      <div className="ui-setting-row">
-                        <span className="ui-row-label">{t("health.support")}</span>
-                        {/* Liens de soutien, aussi en bas des Réglages (bêta 0.9.1). */}
-                        <SupportLinks />
                       </div>
                     </>
                   )}

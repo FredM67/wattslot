@@ -12,7 +12,6 @@
     "loading": "Connecting to the application…",
     "error": "The application does not respond ({status}).",
     "version": "Version {version}",
-    "support": "Support the project",
     "mode": "Mode",
     "home_assistant": "Home Assistant",
     "home_assistant_version": "Home Assistant {version}",
@@ -1210,8 +1209,6 @@
     "hour": "{hour}:00",
     "checking": "Checking…",
     "count": "{count} problem(s) to look at",
-    "show_more": "Show the {count} others",
-    "show_less": "Show less",
     "severity_count": "{severity}: {count}"
   },
   "report": {
@@ -1413,7 +1410,9 @@
     "switch": "Animations",
     "switch_help": "Reduced if your device asks for it",
     "sheet_title": "Request an appliance",
-    "sheet_body": "Choose the appliance and the latest time."
+    "sheet_body": "Choose the appliance and the latest time.",
+    "show_more": "Show the {count} others",
+    "show_less": "Show less"
   },
   "today": {
     "loading": "Reading today's plan…",

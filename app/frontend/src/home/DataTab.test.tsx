@@ -101,6 +101,20 @@ describe("onglet Données", () => {
     vi.restoreAllMocks();
   });
 
+  it("replie une longue liste de valeurs corrigées", async () => {
+    const hours = ["2026-10-19T08:00:00Z", "2026-10-19T09:00:00Z", "2026-10-19T10:00:00Z", "2026-10-19T11:00:00Z", "2026-10-19T12:00:00Z"];
+    mockApi(hours.map((start, index) => correction({ id: index + 1, start })));
+    renderTab();
+
+    expect(await screen.findByText("5 valeur(s) corrigée(s)")).toBeInTheDocument();
+    const rows = () => screen.getAllByRole("button", { name: /^Réseau · sensor.grid_off_peak/ });
+    expect(rows()).toHaveLength(3);
+    await userEvent.click(screen.getByRole("button", { name: "Afficher les 2 autres" }));
+    expect(rows()).toHaveLength(5);
+    await userEvent.click(screen.getByRole("button", { name: "Afficher moins" }));
+    expect(rows()).toHaveLength(3);
+  });
+
   it("résume les corrections, nomme le compteur et regroupe les trous", async () => {
     mockApi([correction({}), correction({ id: 2, undone_at: "2026-10-20T09:00:00Z" })]);
     renderTab();
