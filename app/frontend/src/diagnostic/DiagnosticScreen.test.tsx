@@ -104,17 +104,10 @@ function renderScreen(onNavigate = vi.fn()) {
 }
 
 describe("silentEntities", () => {
-  it("repère les entités muettes depuis un jour", () => {
-    const diagnostic: Diagnostic = {
-      ...HEALTHY,
-      ingestion: {
-        ...HEALTHY.ingestion!,
-        entities: [{ ...HEALTHY.ingestion!.entities[1], last_time: "2026-10-14T07:00:00Z" }],
-      },
-      today: {},
-    };
+  it("reprend les entités muettes calculées par le serveur", () => {
+    const entity = HEALTHY.ingestion!.entities[1].entity_id;
     expect(silentEntities(HEALTHY)).toEqual([]);
-    expect(silentEntities(diagnostic)).toEqual([HEALTHY.ingestion!.entities[1].entity_id]);
+    expect(silentEntities({ ...HEALTHY, silent: [entity] })).toEqual([entity]);
   });
 });
 

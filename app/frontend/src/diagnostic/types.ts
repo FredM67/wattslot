@@ -94,6 +94,7 @@ export interface Diagnostic {
   written_bytes: number | null;
   ingestion: IngestionStatus | null;
   today: Record<string, number>;
+  silent?: string[]; // entités muettes à valeur figée suspecte (règle du serveur)
   aggregation: AggregationStatus | null;
   maintenance: MaintenanceStatus | null;
   planning: PlanningStatus | null;

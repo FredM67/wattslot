@@ -52,6 +52,7 @@ class Target:
     entity_id: str
     sensor_iri: str
     role: Role
+    device: str | None = None  # clé de l'équipement
 
 
 def targets(model: HomeModel) -> dict[str, Target]:
@@ -61,7 +62,12 @@ def targets(model: HomeModel) -> dict[str, Target]:
         for sensor in device.sensors:
             found.setdefault(
                 sensor.entity_id,
-                Target(sensor.entity_id, sensor_iri(device.key, sensor.entity_id), sensor.role),
+                Target(
+                    sensor.entity_id,
+                    sensor_iri(device.key, sensor.entity_id),
+                    sensor.role,
+                    device.key,
+                ),
             )
     return found
 
@@ -117,6 +123,7 @@ class ReadingFilter:
 class EntityStatus(BaseModel):
     entity_id: str
     role: Role
+    device: str | None = None  # clé de l'équipement
     last_value: float | None = None
     last_time: datetime | None = None
     # Dernier signe de vie : relevé reçu, ou ``last_reported`` de l'instantané de HA. HA ne
@@ -138,6 +145,49 @@ class IngestionStatus(BaseModel):
     days: list[str] = []
     backfilled: int = 0  # relevés repris de l'historique de HA après une coupure
     last_backfill_at: datetime | None = None
+
+
+SILENT_AFTER = timedelta(days=1)
+STUCK_POWER_W = 1.0  # en dessous : appareil au repos, pas un relevé figé
+
+
+def silent_entities(
+    status: IngestionStatus | None, today: dict[str, int], now: datetime
+) -> list[str]:
+    """Entités sans relevé aujourd'hui ni signe de vie depuis un jour, dont la valeur figée est
+    suspecte.
+
+    HA ne réécrit pas une valeur MQTT inchangée (ni ``last_reported``) : une prise à 0 W au repos
+    et une prise morte figée à 0 W sont indiscernables. Ne sont donc retenus que : aucune valeur
+    connue ; une puissance non nulle figée ; un compteur figé alors que la puissance du même
+    équipement est non nulle ; un autre rôle (état de charge) figé. Une prise débranchée est
+    signalée « indisponible » par ailleurs."""
+    if status is None:
+        return []
+    running = {
+        e.device
+        for e in status.entities
+        if e.role in POWER_ROLES and e.last_value is not None and abs(e.last_value) >= STUCK_POWER_W
+    }
+    found = []
+    for entity in status.entities:
+        if today.get(entity.entity_id, 0) > 0:
+            continue
+        last = entity.last_seen or entity.last_time
+        if last is not None and now - last <= SILENT_AFTER:
+            continue
+        value = entity.last_value
+        if value is None or last is None:
+            suspect = True
+        elif entity.role in POWER_ROLES:
+            suspect = abs(value) >= STUCK_POWER_W
+        elif entity.role in ENERGY_ROLES:
+            suspect = entity.device is not None and entity.device in running
+        else:
+            suspect = True
+        if suspect:
+            found.append(entity.entity_id)
+    return found
 
 
 @dataclass
@@ -278,7 +328,7 @@ class Ingestor:
         self._targets = targets(model)
         self._counters.entities = {
             entity_id: self._counters.entities.get(entity_id)
-            or EntityStatus(entity_id=entity_id, role=target.role)
+            or EntityStatus(entity_id=entity_id, role=target.role, device=target.device)
             for entity_id, target in self._targets.items()
         }
         if not self._targets:

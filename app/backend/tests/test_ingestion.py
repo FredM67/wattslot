@@ -310,3 +310,42 @@ def test_a_stable_value_still_counts_as_a_sign_of_life(tmp_path: Path) -> None:
     seen = {e.entity_id: e.last_seen for e in ingestor.status().entities}
 
     assert seen == {"sensor.gone": None, "sensor.meter": old, "sensor.plug_power": recent}
+
+
+def test_only_a_suspicious_frozen_value_is_silent() -> None:
+    """HA ne réécrit pas une valeur MQTT inchangée : une prise à 0 W au repos ressemble à une
+    prise morte. Seules les valeurs figées suspectes sont retenues."""
+    from wattslot.ingestion import EntityStatus, IngestionStatus, silent_entities
+
+    now = T0
+    old = now - timedelta(days=2)
+
+    def entity(
+        name: str, role: Role, value: float | None, device: str, seen: datetime | None = old
+    ) -> EntityStatus:
+        return EntityStatus(
+            entity_id=name, role=role, device=device, last_value=value, last_time=seen
+        )
+
+    status = IngestionStatus(
+        running=True,
+        entities=[
+            entity("idle_power", Role.POWER_CONSUMED, 0.0, "dishwasher"),
+            entity("idle_energy", Role.ENERGY_CONSUMED, 12.3, "dishwasher"),
+            entity("stuck_power", Role.POWER_CONSUMED, 1500.0, "heater"),
+            entity("stuck_energy", Role.ENERGY_CONSUMED, 40.0, "heater"),
+            entity("export", Role.ENERGY_EXPORTED, 7.0, "grid"),
+            entity("never", Role.ENERGY_CONSUMED, None, "plug", seen=None),
+            entity("soc", Role.STATE_OF_CHARGE, 12.0, "battery"),
+            entity("fresh", Role.POWER_CONSUMED, 800.0, "dryer", seen=now - timedelta(hours=1)),
+            entity("written_today", Role.POWER_CONSUMED, 900.0, "oven"),
+        ],
+        received=0,
+        written=0,
+        pending=0,
+    )
+
+    found = silent_entities(status, {"written_today": 3}, now)
+
+    assert found == ["stuck_power", "stuck_energy", "never", "soc"]
+    assert silent_entities(None, {}, now) == []
