@@ -4,11 +4,11 @@
 
 Ask Home Assistant's **Assist** about your energy — *“Why is the washing machine planned at 11 AM?”*, *“How much did the panels produce yesterday?”*, *“Will the battery be full today?”* — with the language model you already use: a local one on your network (Ollama, for instance) or an online service. WattSlot provides the answers through an **MCP server**; the plan itself is always computed without any language model.
 
-The **Assistant** screen guides you step by step and checks the connection.
+**Settings › Voice assistant** checks the connection and guides you step by step (**Connect Assist step by step**, under *Going further*). The **Assistant** screen is for chatting.
 
 ## 1. Connect WattSlot in Home Assistant
 
-In Home Assistant: **Settings › Devices & services › Add integration › Model Context Protocol**, with the address shown on the **Assistant** screen (**Copy the MCP server address**):
+In Home Assistant: **Settings › Devices & services › Add integration › Model Context Protocol**, with the address shown in **Settings › Voice assistant** (**Copy the MCP server address**):
 
 - **As a Home Assistant app**: an address on Home Assistant's internal network, that only Home Assistant can reach.
 - **Standalone**: `http://<WattSlot's address>:8100/mcp`, its address on your local network: only Home Assistant (and Open WebUI) call the MCP server, never your browser. WattSlot remembers it the first time you open the page from your local network, and shows it afterwards even from outside; **Change** corrects it.
@@ -21,7 +21,7 @@ In Home Assistant: **Settings › Devices & services › Add integration › Mod
 
 ## 3. Paste the advised prompt
 
-**Copy the prompt** on the Assistant screen and paste it into the conversation agent's instructions: it tells the model which tool to use for each question and not to invent anything. It exists in the six languages of the app.
+**Copy the prompt** in **Settings › Voice assistant** (step by step) and paste it into the conversation agent's instructions: it tells the model which tool to use for each question and not to invent anything. It exists in the six languages of the app.
 
 **Check** confirms that the MCP server answers.
 

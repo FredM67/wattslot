@@ -34,7 +34,7 @@ The add-on connects to Home Assistant by itself: no token or address to enter.
 
 ## Voice assistant
 
-Ask Home Assistant's Assist about your plan, with the language model you already use in Home Assistant (Ollama on your network, or an online service). Open the **Assistant** page of the add-on: it gives the address to enter in the **Model Context Protocol** integration, the settings for the conversation agent and a prompt to paste. The assistant reads the plan; the only thing it does on its own is file a request, after confirming it with you.
+Ask Home Assistant's Assist about your plan, with the language model you already use in Home Assistant (Ollama on your network, or an online service). Open **Settings › Voice assistant** in the add-on: it gives the address to enter in the **Model Context Protocol** integration, the settings for the conversation agent and a prompt to paste. The assistant reads the plan; the only thing it does on its own is file a request, after confirming it with you.
 
 ## Configuration
 

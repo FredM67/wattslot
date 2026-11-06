@@ -2,16 +2,16 @@
 // Assistant), puis des listes de réglages comme les autres pages : le serveur MCP (adresse,
 // intégration dans Home Assistant), l'assistant préféré de HA avec son agent de conversation
 // (/api/assistant/home), Open WebUI en appel direct (`OpenWebUISettings`) et, pour aller plus
-// loin, les outils dans Open WebUI et le pas à pas. L'application ne garde aucun réglage de
-// l'assistant de HA : « Enregistrer » le modifie dans HA.
+// loin, le branchement de l'Assist pas à pas (avec le prompt conseillé) et les outils dans
+// Open WebUI. L'application ne garde aucun réglage de l'assistant de HA : « Enregistrer » le
+// modifie dans HA.
 
 import { useEffect, useState } from "react";
 
 import { ApiError, getJson, putJson } from "../api";
-import { checkTitle, useConnection, useMcpCheck } from "../assistant/mcp";
-import { McpAddress } from "../assistant/McpParts";
+import { checkTitle, mcpAddress, useConnection, useMcpCheck } from "../assistant/mcp";
+import { CopyButton, McpAddress } from "../assistant/McpParts";
 import { useI18n } from "../i18n/I18nProvider";
-import { routeHash } from "../nav/routes";
 import Icon from "../ui/Icon";
 import { SettingList } from "../ui/SettingRow";
 import StateMessage from "../ui/StateMessage";
@@ -86,6 +86,7 @@ export default function VoiceSettings() {
         {t("nav.voice")}
       </h2>
 
+      <p className="settings-note settings-intro">{t("assistant.intro")}</p>
       <div className="ui-card settings-state">
         <span className="status-dot" data-level={level} aria-hidden="true" />
         <span className="settings-state-text">
@@ -154,16 +155,70 @@ export default function VoiceSettings() {
 
       <h3 className="home-summary-heading">{t("nav.more")}</h3>
       <SettingList>
+        <SetupSteps mcpUrl={mcpAddress(connection)} open={check.status === "failed"} />
         <OpenWebUITools mode={connection?.mode ?? null} />
-        <a className="ui-setting-row ui-setting-row-open" href={routeHash({ section: "assistant", sub: null })}>
-          <span>
-            <span className="ui-row-label">{t("assistant.setup")}</span>
-            <span className="ui-row-help">{t("settings.voice.setup_help")}</span>
-          </span>
-          <Icon name="chevron-right" size={18} />
-        </a>
       </SettingList>
+      <p className="settings-note">{t("assistant.security")}</p>
     </section>
+  );
+}
+
+interface AssistantPrompt {
+  language: string;
+  prompt: string;
+}
+
+/** Branchement de l'Assist pas à pas, replié (déplié si le serveur ne répond pas) : l'adresse à
+ * donner à l'intégration MCP de HA, l'agent de conversation, le prompt conseillé à copier. */
+function SetupSteps({ mcpUrl, open }: { mcpUrl: string | null; open: boolean }) {
+  const { language, t } = useI18n();
+  const [prompt, setPrompt] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getJson<AssistantPrompt>(`api/assistant/prompt?lang=${language}`, controller.signal)
+      .then((found) => setPrompt(found.prompt))
+      .catch(() => {
+        if (!controller.signal.aborted) setPrompt(null);
+      });
+    return () => controller.abort();
+  }, [language]);
+
+  return (
+    <details className="ui-setting-row settings-details voice-steps" open={open || undefined}>
+      <summary>
+        <span>
+          <span className="ui-row-label">{t("assistant.setup")}</span>
+          <span className="ui-row-help">{t("settings.voice.setup_help")}</span>
+        </span>
+        <Icon name="chevron-right" size={18} />
+      </summary>
+      <h4>{t("assistant.step1.title")}</h4>
+      <p>{t("assistant.step1.help")}</p>
+      {mcpUrl && (
+        <p className="settings-actions">
+          <code className="assistant-address">{mcpUrl}</code>
+          <CopyButton text={mcpUrl} label={t("assistant.copy_address")} />
+        </p>
+      )}
+      <h4>{t("assistant.step2.title")}</h4>
+      <ul>
+        <li>{t("assistant.step2.agent")}</li>
+        <li>{t("assistant.step2.model")}</li>
+        <li>{t("assistant.step2.api")}</li>
+      </ul>
+      <h4>{t("assistant.step3.title")}</h4>
+      <p>{t("assistant.step3.help")}</p>
+      {prompt === null && <p role="alert">{t("assistant.prompt_error")}</p>}
+      {prompt && (
+        <>
+          <pre className="assistant-prompt" aria-label={t("assistant.prompt_label")}>
+            {prompt}
+          </pre>
+          <CopyButton text={prompt} label={t("assistant.copy_prompt")} />
+        </>
+      )}
+    </details>
   );
 }
 

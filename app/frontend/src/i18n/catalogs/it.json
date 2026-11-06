@@ -1303,7 +1303,6 @@
     }
   },
   "assistant": {
-    "title": "Assistente vocale",
     "intro": "Faccia domande sulla sua energia all'Assist di Home Assistant, con il modello linguistico che ha già (Ollama sulla sua rete, o un servizio online). Il piano resta calcolato dall'applicazione; l'assistente lo legge e lo spiega.",
     "copy": "Copia",
     "copied": "Copiato",

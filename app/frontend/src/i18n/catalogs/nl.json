@@ -1303,7 +1303,6 @@
     }
   },
   "assistant": {
-    "title": "Spraakassistent",
     "intro": "Stel de Assist van Home Assistant vragen over uw energie, met het taalmodel dat u al hebt (Ollama op uw netwerk, of een onlinedienst). Het plan wordt nog steeds door de toepassing berekend; de assistent leest en verklaart het.",
     "copy": "Kopiëren",
     "copied": "Gekopieerd",

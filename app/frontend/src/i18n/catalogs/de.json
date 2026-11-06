@@ -1303,7 +1303,6 @@
     }
   },
   "assistant": {
-    "title": "Sprachassistent",
     "intro": "Stellen Sie dem Assist von Home Assistant Fragen zu Ihrer Energie, mit dem Sprachmodell, das Sie schon haben (Ollama in Ihrem Netz oder ein Onlinedienst). Der Plan wird weiterhin von der Anwendung berechnet; der Assistent liest und erklärt ihn.",
     "copy": "Kopieren",
     "copied": "Kopiert",

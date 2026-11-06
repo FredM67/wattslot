@@ -22,6 +22,8 @@ const HOME = {
   ],
 };
 
+const PROMPT = "Tu es l'assistant énergie d'une maison avec des panneaux solaires.";
+
 type Calls = { url: string; method: string; body: unknown }[];
 
 function mockApi(home: unknown = HOME, put: (body: unknown) => Response = () => Response.json(HOME)): Calls {
@@ -42,6 +44,7 @@ function mockApi(home: unknown = HOME, put: (body: unknown) => Response = () => 
     if (url === "api/assistant/connection") return Response.json({ mode: "standalone", mcp_url: null });
     if (url === "api/assistant/home" && method === "PUT") return put(body);
     if (url === "api/assistant/home") return Response.json(home);
+    if (url.startsWith("api/assistant/prompt")) return Response.json({ language: "fr", prompt: PROMPT });
     if (url === "mcp") {
       const { id, method: rpc } = body as { id: number; method: string };
       const result = rpc === "tools/list" ? { tools: new Array(9).fill({ name: "x" }) } : { serverInfo: {} };
@@ -75,13 +78,28 @@ describe("sous-page « Assistant vocal »", () => {
     renderPage();
 
     expect(await screen.findByText("Le serveur MCP répond : 9 outils.")).toBeInTheDocument();
-    expect(screen.getByText(`${window.location.origin}/mcp`)).toBeInTheDocument();
+    // L'adresse : sur sa ligne, et reprise dans le pas à pas.
+    expect(screen.getAllByText(`${window.location.origin}/mcp`)).toHaveLength(2);
     expect(await screen.findByText("Intégration MCP dans Home Assistant")).toBeInTheDocument();
     expect(screen.getByText("WattSlot")).toBeInTheDocument();
     expect(screen.getByText("chargée")).toBeInTheDocument();
     expect(screen.getByLabelText("Assistant préféré")).toHaveValue("p1");
     expect(screen.getByLabelText("Agent de conversation")).toHaveValue("conversation.home_assistant");
-    expect(screen.getByRole("link", { name: /Brancher l'Assist pas à pas/ })).toHaveAttribute("href", "#/assistant");
+  });
+
+  it("le pas à pas, replié, donne l'adresse et le prompt conseillé à copier", async () => {
+    mockApi();
+    renderPage();
+    const user = userEvent.setup();
+
+    await screen.findByText("Le serveur MCP répond : 9 outils.");
+    const steps = screen.getByText("Brancher l'Assist pas à pas").closest("details") as HTMLDetailsElement;
+    expect(steps.open).toBe(false); // serveur vérifié : replié
+    expect(await within(steps).findByText(PROMPT)).toBeInTheDocument();
+    expect(within(steps).getByText(`${window.location.origin}/mcp`)).toBeInTheDocument();
+    await user.click(within(steps).getByText("Brancher l'Assist pas à pas"));
+    await user.click(within(steps).getByRole("button", { name: "Copier le prompt" }));
+    expect(await navigator.clipboard.readText()).toBe(PROMPT); // presse-papiers de user-event
   });
 
   it("retient l'adresse interne vue du réseau local, et la laisse corriger", async () => {
@@ -90,7 +108,7 @@ describe("sous-page « Assistant vocal »", () => {
     const user = userEvent.setup();
 
     // Page ouverte depuis le réseau local (localhost) : son adresse est retenue.
-    expect(await screen.findByText(`${window.location.origin}/mcp`)).toBeInTheDocument();
+    expect(await screen.findAllByText(`${window.location.origin}/mcp`)).toHaveLength(2);
     expect(calls.find((call) => call.method === "PUT" && call.url === "api/assistant/connection")?.body).toEqual({
       mcp_url: `${window.location.origin}/mcp`,
     });
@@ -105,7 +123,7 @@ describe("sous-page « Assistant vocal »", () => {
     await user.clear(field);
     await user.type(field, "http://192.0.2.10:8100/mcp");
     await user.click(form.getByRole("button", { name: "Enregistrer" }));
-    expect(await screen.findByText("http://192.0.2.10:8100/mcp")).toBeInTheDocument();
+    expect(await screen.findAllByText("http://192.0.2.10:8100/mcp")).toHaveLength(2);
   });
 
   it("change l'agent de l'assistant préféré dans Home Assistant", async () => {
