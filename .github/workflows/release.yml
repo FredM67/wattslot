@@ -88,6 +88,42 @@ jobs:
             "$source"
           docker buildx imagetools inspect "$IMAGE:${{ steps.version.outputs.version }}"
 
+  signature:
+    # Signature de la version (Cosign, sans clé) : le certificat lie l'image à ce workflow et à
+    # l'étiquette Git ; vérification décrite dans docs/installation.md. Job à part, en parallèle
+    # de la branche addon : un échec ici ne retarde pas la version pour le Supervisor. Seules les
+    # versions sont signées, pas chaque image de main : une signature par version garde la liste
+    # des images de GHCR lisible (dev/tools/download_stats.py). Le Supervisor ne vérifie pas
+    # encore les signatures.
+    name: Signature ${{ github.ref_name }}
+    needs: image
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write # signature déposée à côté de l'image
+      id-token: write # identité OIDC du workflow, pour le certificat
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: v3.1.4
+
+      - name: Signature et vérification
+        run: |
+          digest=$(docker buildx imagetools inspect "$IMAGE:${GITHUB_REF_NAME#v}" \
+            --format '{{json .Manifest}}' | jq -r .digest)
+          [ -n "$digest" ] && [ "$digest" != null ] \
+            || { echo "::error::Empreinte de l'image ${GITHUB_REF_NAME#v} introuvable."; exit 1; }
+          cosign sign --yes "$IMAGE@$digest"
+          cosign verify "$IMAGE@$digest" \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/release.yml@${{ github.ref }}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com >/dev/null
+
   addon:
     # Dépôt d'extensions suivi par le Supervisor (adresse `…#addon`) : seulement `repository.yaml`
     # et `ha-addon/` de l'étiquette, un commit par version, jamais de push forcé.

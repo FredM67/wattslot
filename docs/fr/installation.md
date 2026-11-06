@@ -78,6 +78,16 @@ Ouvrez ensuite `http://<hôte>:8100` :
 
 **Mettre à jour** : `docker compose pull && docker compose up -d` (ou téléchargez l'image et recréez le conteneur). Fixez une version (`ghcr.io/jmcruvellier/wattslot:0.9.0`) si vous préférez mettre à jour à la main.
 
+**Vérifier l'image** : les versions publiées après la 0.9.5 sont signées avec [Cosign](https://docs.sigstore.dev/), sans clé : la signature prouve que l'image a été publiée par le workflow de publication de WattSlot sur GitHub. Pour vérifier une version (ici `X.Y.Z`) :
+
+```bash
+cosign verify ghcr.io/jmcruvellier/wattslot:X.Y.Z \
+  --certificate-identity "https://github.com/jmcruvellier/wattslot/.github/workflows/release.yml@refs/tags/vX.Y.Z" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+Home Assistant ne vérifie pas encore les signatures ; c'est pour qui veut vérifier à la main.
+
 | Variable | Rôle |
 |---|---|
 | `HA_URL` | L'adresse de votre Home Assistant, telle que vous l'ouvrez dans un navigateur |

@@ -67,7 +67,14 @@ to write everything to disk.
 
 ## Security
 
-The add-on runs under its own AppArmor profile: it can only read and write its own folder and the files it needs, and cannot start any program other than its own. It uses Home Assistant's API to read your sensors and send notifications; it needs no access to the host, the network configuration or other add-ons, and its interface is only reachable through Home Assistant (ingress).
+The add-on runs under its own AppArmor profile: it can only read and write its own folder and the files it needs, and cannot start any program other than its own. It needs no access to the host, the network configuration or other add-ons, and its interface is only reachable through Home Assistant (ingress).
+
+**Home Assistant API.** The add-on asks for access to Home Assistant's API (`homeassistant_api`), which Home Assistant grants as a whole, with administrator rights: there is no narrower option. WattSlot uses it to:
+
+- **read**: the states of your entities and their changes, the Energy dashboard settings and solar forecast, the history and statistics, the entity and device registries (to find your appliances), your to-do lists, and the list of conversation agents;
+- **act**, in two ways only: send the notifications you set up (`notify` services), and pass your questions to the conversation agent you chose for the voice assistant.
+
+It never starts an appliance, never controls your battery and never changes an entity, an automation or a setting of Home Assistant.
 
 ## Help
 
