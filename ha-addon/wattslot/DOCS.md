@@ -65,6 +65,10 @@ The add-on checks itself every 30 seconds. With **Watchdog** turned on (add-on p
 Assistant restarts it if it stops answering. When stopped or updated, the add-on has 30 seconds
 to write everything to disk.
 
+## Security
+
+The add-on runs under its own AppArmor profile: it can only read and write its own folder and the files it needs, and cannot start any program other than its own. It uses Home Assistant's API to read your sensors and send notifications; it needs no access to the host, the network configuration or other add-ons, and its interface is only reachable through Home Assistant (ingress).
+
 ## Help
 
 Something wrong? Open **Settings › App status** in the app: it explains each problem and how to fix it, and prepares an anonymised report to attach to a [bug report](https://github.com/jmcruvellier/wattslot/issues/new/choose). See also [Troubleshooting and FAQ](https://github.com/jmcruvellier/wattslot/blob/main/docs/troubleshooting.md).

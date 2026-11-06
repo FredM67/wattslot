@@ -25,3 +25,5 @@ Tout : la description de votre maison, vos réglages, vos mesures et vos plans s
 ## Sécurité
 
 WattSlot **recommande** seulement : il ne lance jamais un appareil et ne pilote jamais votre batterie. Comme application de Home Assistant, il n'est joignable que par Home Assistant ; en mode autonome, gardez-le sur votre réseau local.
+
+Comme application de Home Assistant, WattSlot tourne aussi sous son propre profil AppArmor : il ne peut lire et écrire que son dossier et les fichiers dont il a besoin, et ne peut lancer aucun autre programme que le sien. Il a besoin de l'API de Home Assistant (pour lire vos capteurs et envoyer les notifications), mais d'aucun accès à l'hôte, à la configuration réseau ni aux autres applications.

@@ -1,0 +1,97 @@
+#include <tunables/global>
+
+# Profil AppArmor de l'extension WattSlot : remplace le profil Docker par défaut et relève la
+# note de sécurité affichée par Home Assistant. Le Supervisor remplace le nom du profil par
+# l'identifiant de l'extension ; on y met donc le slug.
+#
+# L'image (app/Dockerfile) n'a pas de S6 overlay : un seul processus Python (uvicorn), plus les
+# commandes que le Supervisor lance dans le conteneur (contrôle de santé, backup_pre et
+# backup_post), qui héritent de ce profil.
+#
+# À revoir quand l'application touche un nouveau fichier, lance un programme ou ouvre un
+# nouveau type de connexion : passer le profil en mode « complain », utiliser l'extension, puis
+# lire sur l'hôte : journalctl _TRANSPORT="audit" -g 'apparmor="ALLOWED"'.
+profile wattslot flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Réseau : API de HA par le Supervisor (WebSocket), ingress et serveur MCP sur le port 8100,
+  # Open WebUI, résolution de noms. Aucun accès brut ni aucune capacité réseau.
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+  network unix stream,
+  network unix dgram,
+  network netlink raw,
+
+  # Signaux : arrêt par Docker et le Supervisor ; Python et uvicorn s'en envoient à eux-mêmes.
+  signal (receive) peer=unconfined,
+  signal (send, receive) peer=@{profile_name},
+
+  # Programmes : seulement l'interpréteur Python de l'image (uvicorn est un script Python) et
+  # le shell, au cas où une commande du Supervisor passe par lui.
+  /usr/local/bin/python3* ix,
+  /usr/local/bin/python ix,
+  /usr/local/bin/uvicorn rix,
+  /bin/sh ix,
+  /bin/dash ix,
+  /usr/bin/dash ix,
+
+  # Python, ses modules et les bibliothèques natives (highspy, pyoxigraph, uvloop…).
+  /usr/local/lib/** rm,
+  /usr/local/include/** r,
+  /usr/lib/** rm,
+  /lib/** rm,
+  /usr/share/zoneinfo/** r,
+  /usr/local/share/** r,
+
+  # Application : code et interface compilée (lecture seule).
+  /app/ r,
+  /app/** r,
+
+  # Données de l'extension : base SQLite, magasin Oxigraph, relevés bruts, copie de sauvegarde,
+  # options du Supervisor (/data/options.json). Verrous pour SQLite et RocksDB.
+  /data/ r,
+  /data/** rwlk,
+
+  # Fichiers temporaires (SQLite, Python).
+  /tmp/ r,
+  /tmp/** rwlk,
+  /var/tmp/ r,
+  /var/tmp/** rwlk,
+
+  # Réseau et certificats : résolution de noms, appels HTTPS vers Open WebUI.
+  /etc/hosts r,
+  /etc/hostname r,
+  /etc/resolv.conf r,
+  /etc/nsswitch.conf r,
+  /etc/host.conf r,
+  /etc/gai.conf r,
+  /etc/services r,
+  /etc/protocols r,
+  /etc/passwd r,
+  /etc/group r,
+  /etc/localtime r,
+  /etc/timezone r,
+  /etc/ld.so.cache r,
+  /etc/ssl/** r,
+  /usr/share/ca-certificates/** r,
+  /etc/mime.types r,
+
+  # Diagnostic (mémoire et écritures du processus), nombre de processeurs pour le calcul.
+  @{PROC}/@{pid}/** r,
+  @{PROC}/sys/kernel/random/uuid r,
+  @{PROC}/cpuinfo r,
+  @{PROC}/meminfo r,
+  @{PROC}/stat r,
+  /sys/devices/system/cpu/** r,
+  /sys/fs/cgroup/** r,
+
+  # Aléa (secrets, identifiants).
+  /dev/urandom r,
+  /dev/random r,
+  /dev/null rw,
+  /dev/tty rw,
+  /dev/pts/* rw,
+  /dev/shm/** rwlk,
+}
