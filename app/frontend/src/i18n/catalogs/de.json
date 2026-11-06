@@ -492,7 +492,8 @@
       "service_help": "Erhält die Benachrichtigungen, außer eine Nachricht hat ein eigenes Gerät",
       "other_help": "Falls es nicht in der Liste steht",
       "week": {
-        "days": "Sendetage"
+        "days": "Sendetage",
+        "at": "Sendezeit"
       }
     },
     "forecast": {

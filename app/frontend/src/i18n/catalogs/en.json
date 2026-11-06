@@ -492,7 +492,8 @@
       "service_help": "Receives the notifications, unless a message has its own device",
       "other_help": "If it is not in the list",
       "week": {
-        "days": "Sending days"
+        "days": "Sending days",
+        "at": "Sending time"
       }
     },
     "forecast": {
