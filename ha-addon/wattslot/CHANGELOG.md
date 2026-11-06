@@ -4,7 +4,7 @@
 
 ### English
 
-A new notification sends you the week's plan on the day you choose, and the plan now follows the real sky and the real battery during the day. The assistant went through nearly 2,900 test questions on 16 local model setups, to make its answers as reliable as possible and find the best model for a small installation: Qwen3 4B Instruct, which got every question of the test suite right on an NVIDIA Jetson Orin Nano. The Settings have also been redone page by page, and the app now has Home Assistant's highest security rating.
+A new notification sends you the week's plan on the day you choose, and the plan now follows the real sky and the real battery during the day. The assistant went through nearly 2,900 test questions on 16 local model setups, to make its answers as reliable as possible and find the best model for a small installation: Qwen3 4B Instruct, which got every question of the test suite right on a small, low-power AI computer. The Settings have also been redone page by page, and the app now has Home Assistant's highest security rating.
 
 - **Weekly plan notification** (new, requested by a user)
   - A sixth notification lists the appliances planned for the coming days, one line per day, for example "Saturday: washing machine 11 am – 1 pm".
@@ -42,7 +42,7 @@ A new notification sends you the week's plan on the day you choose, and the plan
 
 ### Français
 
-Une nouvelle notification vous envoie le planning de la semaine le jour de votre choix, et le plan suit désormais le vrai ciel et la vraie batterie au fil de la journée. L'assistant a été soumis à près de 2 900 questions de test sur 16 configurations de modèles locaux, pour rendre ses réponses aussi fiables que possible et trouver le meilleur modèle pour une petite installation : Qwen3 4B Instruct, qui a répondu juste à toutes les questions de la suite de test sur un NVIDIA Jetson Orin Nano. Les Réglages ont aussi été refaits page par page, et l'application obtient la meilleure note de sécurité de Home Assistant.
+Une nouvelle notification vous envoie le planning de la semaine le jour de votre choix, et le plan suit désormais le vrai ciel et la vraie batterie au fil de la journée. L'assistant a été soumis à près de 2 900 questions de test sur 16 configurations de modèles locaux, pour rendre ses réponses aussi fiables que possible et trouver le meilleur modèle pour une petite installation : Qwen3 4B Instruct, qui a répondu juste à toutes les questions de la suite de test sur un petit ordinateur d'IA basse consommation. Les Réglages ont aussi été refaits page par page, et l'application obtient la meilleure note de sécurité de Home Assistant.
 
 - **Notification « Planning de la semaine »** (nouveau, demandé par un utilisateur)
   - Une sixième notification liste les appareils prévus pour les jours à venir, une ligne par jour, par exemple « Samedi : lave-linge 11 h – 13 h ».
