@@ -165,6 +165,14 @@ def test_day_plan_and_week(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> 
     assert f"today is {(first - timedelta(days=2)).isoformat()}" in past["hint"]
     assert past["forecast_end"] == week["forecast_end"]
     assert _call(api, "get_forecast", {"day": "lundi"})["error"] == "invalid_date"
+    # Un nombre de jours à partir d'aujourd'hui : « dans 10 jours » sans connaître la date.
+    ahead = (days[1]["date_cible"] - (first - timedelta(days=2))).days
+    assert _call(api, "get_forecast", {"day": str(ahead)})["day"] == third["day"]
+    assert _call(api, "get_forecast", {"day": "+12"})["forecast_end"] == week["forecast_end"]
+    assert (
+        _call(api, "get_forecast", {"day": "0"})["day"]
+        == _call(api, "get_forecast", {"day": "today"})["day"]
+    )
 
 
 def test_days_of_the_week_in_words() -> None:

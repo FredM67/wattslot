@@ -650,12 +650,19 @@ async def get_forecast(state: Any, day: str = "today") -> dict[str, Any]:
     lang = language(state)
     today = today_of(state)
     relative = {"today": today, "tomorrow": today + timedelta(days=1)}
+    asked = day.strip().lower()
     try:
-        wanted = relative.get(day.strip().lower()) or date.fromisoformat(day.strip())
-    except ValueError:
+        if asked.lstrip("+").isdigit():
+            # Un nombre de jours à partir d'aujourd'hui : le modèle ne connaît pas la date du
+            # jour, et à « dans 10 jours » qwen3 refusait sans appeler l'outil (banc du 06/11).
+            wanted = today + timedelta(days=int(asked.lstrip("+")))
+        else:
+            wanted = relative.get(asked) or date.fromisoformat(asked)
+    except (ValueError, OverflowError):
         return {
             "error": "invalid_date",
-            "hint": f"Use today, tomorrow or YYYY-MM-DD; today is {today.isoformat()}.",
+            "hint": "Use today, tomorrow, a number of days from today or YYYY-MM-DD; "
+            f"today is {today.isoformat()}.",
         }
     if wanted < today:
         # La date du jour et la fin de la prévision : à « dans 10 jours », qwen3.5 demandait une

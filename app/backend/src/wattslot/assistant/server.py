@@ -46,8 +46,10 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
 
     @server.tool(annotations=READ_ONLY)
     async def explain_device(device: str, day: tools.Day = "today") -> dict[str, Any]:
+        # « today » par défaut, dit en clair : gemma4 sans réflexion et ministral demandaient
+        # « pour quel jour ? » au lieu d'appeler l'outil (banc du 05/11).
         """Why an appliance runs when it does: planned and actual times, reason, whether it
-        started on time. No time needed in the question."""
+        started on time. No time needed in the question; day is today unless another is asked."""
         return await tools.explain_device(state(), device, day)
 
     @server.tool(annotations=READ_ONLY)
@@ -70,8 +72,9 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
     async def get_forecast(day: str = "today") -> dict[str, Any]:
         # Banc d'essai (2 x 5 essais) : avec « up to about a week ahead », qwen3 n'appelait plus
         # get_tariff pour « le prix du kWh » (0 sur 10, contre 10 sur 10 avec ce texte).
-        """Weather and solar forecast of a day (today, tomorrow or YYYY-MM-DD): hour by hour
-        today and tomorrow; says when the forecast ends."""
+        # Un nombre de jours accepté : « dans 10 jours » sans date du jour connue (banc du 06/11).
+        """Weather and solar forecast of a day (today, tomorrow, a number of days from today
+        or YYYY-MM-DD): hour by hour today and tomorrow; says when the forecast ends."""
         return await tools.get_forecast(state(), day)
 
     @server.tool(annotations=READ_ONLY)
