@@ -1,5 +1,83 @@
 # Changelog
 
+## 0.9.6
+
+### English
+
+A new notification sends you the week's plan on the day you choose, and the plan now follows the real sky and the real battery during the day. The assistant went through nearly 2,900 test questions on 16 local model setups, to make its answers as reliable as possible and find the best model for a small installation: Qwen3 4B Instruct, which got every question of the test suite right on an NVIDIA Jetson Orin Nano. The Settings have also been redone page by page, and the app now has Home Assistant's highest security rating.
+
+- **Weekly plan notification** (new, requested by a user)
+  - A sixth notification lists the appliances planned for the coming days, one line per day, for example "Saturday: washing machine 11 am – 1 pm".
+  - You choose the day or days and the time it is sent (Sunday from 6 pm by default). Quiet hours and the choice of phone work as for the other notifications.
+  - A day with nothing planned says so, and the test message shows the plan day by day, just as on your phone.
+
+- **A plan closer to reality**
+  - When the day turns out cloudier than forecast, the plan follows the solar production actually measured, instead of counting on sunshine that isn't coming. The dotted forecast curve follows too.
+  - The battery is no longer shown charging or discharging when it can't: the current hour starts from its real level, and the tiny "0.0 kWh" blocks are gone.
+  - Once an appliance has started, its explanation keeps the reasons its slot was chosen (solar surplus, off-peak hours, deadline…), instead of just "started at 9:59".
+  - Charts › Week: the forecast production tooltip no longer shows a confusing "surplus", which was often negative.
+
+- **Assistant**
+  - Before filing a request ("run the dishwasher before tomorrow evening"), the assistant now always asks you to confirm.
+  - Answers read better: full sentences, one figure for each thing (the day's cost, the battery level in %), no technical codes.
+  - It finds the right information more easily: today's cost, the next appliance to start, why an appliance runs at a given time.
+  - With an Open WebUI model, the Assistant page now really reads your plan, instead of answering that it hasn't been calculated yet.
+  - For a small setup, the recommended local model is Qwen3 4B Instruct: fast, and right on every question of the test suite.
+
+- **App status**
+  - Sensors that are simply idle (a plug at 0 W, an appliance switched off) are no longer flagged as "silent". Only a reading frozen in a suspicious way is.
+  - The page opens with a summary ("Nothing to report" or the number of problems by severity) and shows the three most important problems first. The others unfold with one click.
+
+- **Settings and My home, redesigned**
+  - Every Settings page now has the same clear layout: sections with titles, one line per setting with a short help, and a status card at the top. This covers the voice assistant, notifications, language and display, app status, automatic calculation and the Home Assistant connection.
+  - Each notification's options fit on one line and unfold when you want to change them. The Save button is at the bottom of the page.
+  - The Assistant page now holds only the conversation, over the full height of the screen. The step-by-step setup of Assist moved to Settings › Voice assistant.
+  - My home › Data opens with a status card ("Your data is healthy" or the number of corrected values). Long lists of corrections are folded, and "Analyse a period" is right at hand.
+  - Duplicate links are gone, and every page is comfortable on a phone, without scrolling sideways.
+
+- **Security**
+  - WattSlot now runs under its own protection profile (AppArmor): it can only touch its own files. Home Assistant gives it its highest security rating, 8 out of 8.
+  - The documentation explains why WattSlot needs access to Home Assistant and what it does with it: it reads, sends your notifications, and never changes anything.
+  - From this version on, every release is digitally signed, so anyone can check that it really comes from WattSlot.
+
+### Français
+
+Une nouvelle notification vous envoie le planning de la semaine le jour de votre choix, et le plan suit désormais le vrai ciel et la vraie batterie au fil de la journée. L'assistant a été soumis à près de 2 900 questions de test sur 16 configurations de modèles locaux, pour rendre ses réponses aussi fiables que possible et trouver le meilleur modèle pour une petite installation : Qwen3 4B Instruct, qui a répondu juste à toutes les questions de la suite de test sur un NVIDIA Jetson Orin Nano. Les Réglages ont aussi été refaits page par page, et l'application obtient la meilleure note de sécurité de Home Assistant.
+
+- **Notification « Planning de la semaine »** (nouveau, demandé par un utilisateur)
+  - Une sixième notification liste les appareils prévus pour les jours à venir, une ligne par jour, par exemple « Samedi : lave-linge 11 h – 13 h ».
+  - Vous choisissez le ou les jours et l'heure d'envoi (le dimanche à partir de 18 h par défaut). Les heures de silence et le choix du téléphone fonctionnent comme pour les autres notifications.
+  - Un jour sans rien de prévu le dit, et le message d'essai montre le planning jour par jour, comme sur votre téléphone.
+
+- **Un plan plus proche de la réalité**
+  - Quand la journée est plus nuageuse que prévu, le plan suit la production solaire réellement mesurée au lieu de compter sur un soleil qui ne vient pas. La courbe pointillée de prévision suit aussi.
+  - La batterie n'est plus montrée en train de se charger ou de se décharger quand elle ne le peut pas : l'heure en cours part de son niveau réel, et les petits blocs « 0,0 kWh » ont disparu.
+  - Une fois un appareil lancé, son explication garde les raisons du choix de son créneau (surplus solaire, heures creuses, échéance…), au lieu d'un simple « lancé à 9 h 59 ».
+  - Courbes › Semaine : l'info-bulle de la production prévue n'affiche plus un « surplus » déroutant, souvent négatif.
+
+- **Assistant**
+  - Avant de déposer une demande (« lance le lave-vaisselle avant demain soir »), l'assistant vous demande désormais toujours de confirmer.
+  - Les réponses se lisent mieux : des phrases complètes, un seul chiffre pour chaque chose (le coût de la journée, la batterie en %), plus aucun code technique.
+  - Il trouve plus facilement la bonne information : le coût du jour, le prochain appareil à lancer, la raison de l'heure choisie pour un appareil.
+  - Avec un modèle d'Open WebUI, la page Assistant lit vraiment votre plan au lieu de répondre qu'il n'est pas encore calculé.
+  - Pour une petite installation, le modèle local conseillé est Qwen3 4B Instruct : rapide, et juste sur toutes les questions de la suite de test.
+
+- **État de l'application**
+  - Les capteurs simplement au repos (une prise à 0 W, un appareil éteint) ne sont plus signalés comme « muets ». Seul un relevé figé de façon suspecte l'est encore.
+  - La page s'ouvre sur un résumé (« Rien à signaler » ou le nombre de problèmes par gravité) et montre d'abord les trois problèmes les plus importants. Les autres se déplient d'un clic.
+
+- **Réglages et Ma maison, refaits**
+  - Toutes les pages des Réglages ont maintenant la même présentation claire : des sections titrées, une ligne par réglage avec une courte aide, et une carte d'état en tête. Cela concerne l'assistant vocal, les notifications, la langue et l'affichage, l'état de l'application, le calcul automatique et la connexion à Home Assistant.
+  - Les options de chaque notification tiennent sur une ligne et se déplient pour les régler. Le bouton Enregistrer est en bas de page.
+  - La page Assistant ne contient plus que la discussion, sur toute la hauteur de l'écran. Le pas à pas pour brancher Assist passe dans Réglages › Assistant vocal.
+  - Ma maison › Données s'ouvre sur une carte d'état (« Vos données sont saines » ou le nombre de valeurs corrigées). Les longues listes de corrections sont repliées, et « Analyser une période » est à portée de main.
+  - Les liens en double ont disparu, et chaque page est confortable sur téléphone, sans défilement de côté.
+
+- **Sécurité**
+  - WattSlot tourne désormais sous son propre profil de protection (AppArmor) : il ne peut toucher qu'à ses propres fichiers. Home Assistant lui donne sa meilleure note de sécurité, 8 sur 8.
+  - La documentation explique pourquoi WattSlot a besoin d'accéder à Home Assistant et ce qu'il en fait : il lit, envoie vos notifications et ne modifie jamais rien.
+  - À partir de cette version, chaque version publiée est signée numériquement : chacun peut vérifier qu'elle vient bien de WattSlot.
+
 ## 0.9.5
 
 ### English
