@@ -16,7 +16,7 @@ Les tâches impossibles à placer et les profils manquants donnent les avertisse
 import math
 from collections import defaultdict
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from typing import Any
 
@@ -262,6 +262,13 @@ def corrected_production(
     return production, net
 
 
+def with_corrected_forecast(data: PlanningInput, reference: Reference = REFERENCE) -> PlanningInput:
+    """Entrée du jour dont la prévision des heures à décider est recalée : le calcul et le plan
+    enregistré (courbes, cartes) voient la même production."""
+    production, net = corrected_production(data, reference)
+    return replace(data, production_kwh=production, net_kwh=net)
+
+
 def _context(data: PlanningInput, reference: Reference) -> tuple[bool, bool]:
     """(prévision qui dévie, journée prioritaire pour la charge complète) : règles du
     12/10/2026 de la v1."""
@@ -469,12 +476,11 @@ def from_input(data: PlanningInput, reference: Reference = REFERENCE) -> Problem
     )
     per_direction = (battery.round_trip_percent / 100) ** 0.5 if battery.round_trip_percent else 1.0
     active_from, active_to = _active_range(data, reference)
-    production, net = corrected_production(data, reference)
     return Problem(
         day=day,
         first_hour=first_hour,
-        net_kwh=net,
-        production_kwh=production,
+        net_kwh=dict(data.net_kwh),
+        production_kwh=dict(data.production_kwh),
         fixed_kwh={hour: fixed.get(hour, 0.0) for hour in range(24)},
         tasks=tasks,
         launched=launched,
