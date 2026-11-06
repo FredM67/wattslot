@@ -1,5 +1,6 @@
 """Open WebUI en appel direct (page Assistant)."""
 
+import asyncio
 import json
 import threading
 from collections.abc import Iterator
@@ -12,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from tests.test_health import _settings
 from wattslot.assistant.open_webui import (
+    MAX_TOOL_ROUNDS,
     HistoryLine,
     OpenWebUIChange,
     OpenWebUIError,
@@ -30,6 +32,9 @@ class FakeOpenWebUI:
 
     def __init__(self) -> None:
         self.received: list[dict[str, Any]] = []
+        # Outil que le modèle appelle d'abord quand des outils lui sont proposés.
+        self.tool_call: dict[str, Any] | None = None
+        self.endless = False  # appelle l'outil à chaque tour où des outils sont proposés
         fake = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -57,7 +62,15 @@ class FakeOpenWebUI:
                     return
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 fake.received.append(body)
-                answer = {"message": {"role": "assistant", "content": f"Vu : {body['model']}"}}
+                answered = [m for m in body["messages"] if m["role"] == "tool"]
+                if fake.tool_call and "tools" in body and (fake.endless or not answered):
+                    calls = [{"id": "appel-1", "type": "function", "function": fake.tool_call}]
+                    answer = {"message": {"role": "assistant", "content": "", "tool_calls": calls}}
+                elif answered:
+                    content = f"Outil lu : {answered[-1]['content'][:20]}"
+                    answer = {"message": {"role": "assistant", "content": content}}
+                else:
+                    answer = {"message": {"role": "assistant", "content": f"Vu : {body['model']}"}}
                 self._reply(200, {"choices": [answer]})
 
             def log_message(self, *args: object) -> None:
@@ -102,19 +115,69 @@ def test_the_message_follows_the_instructions_and_the_history(fake: FakeOpenWebU
         HistoryLine(role="user", content="Bonjour"),
         HistoryLine(role="assistant", content="Bonjour !"),
     ]
-    reply = complete(
-        OpenWebUISetting(url=fake.url, api_key=KEY), "qwen2.5:14b", "Prompt", history, "Et demain ?"
+    reply = asyncio.run(
+        complete(
+            OpenWebUISetting(url=fake.url, api_key=KEY),
+            "qwen2.5:14b",
+            "Prompt",
+            history,
+            "Et demain ?",
+        )
     )
 
     assert reply == "Vu : qwen2.5:14b"
     sent = fake.received[0]
-    assert sent["stream"] is False
+    assert sent["stream"] is False and "tools" not in sent
     assert sent["messages"] == [
         {"role": "system", "content": "Prompt"},
         {"role": "user", "content": "Bonjour"},
         {"role": "assistant", "content": "Bonjour !"},
         {"role": "user", "content": "Et demain ?"},
     ]
+
+
+def test_the_tools_called_by_the_model_run_here(fake: FakeOpenWebUI) -> None:
+    """Par l'API, Open WebUI n'ajoute pas les outils du modèle : WattSlot les envoie, exécute
+    les appels du modèle (arguments en JSON) et lui rend les résultats."""
+    fake.tool_call = {"name": "get_day_plan", "arguments": '{"day": "today"}'}
+    seen: list[tuple[str, dict[str, Any]]] = []
+
+    async def call(name: str, arguments: dict[str, Any]) -> str:
+        seen.append((name, arguments))
+        return '{"cost": "1,84 €"}'
+
+    tools = [{"type": "function", "function": {"name": "get_day_plan", "parameters": {}}}]
+    setting = OpenWebUISetting(url=fake.url, api_key=KEY)
+    reply = asyncio.run(complete(setting, "qwen3", "Prompt", [], "Coût ?", tools, call))
+
+    assert seen == [("get_day_plan", {"day": "today"})]
+    assert reply == 'Outil lu : {"cost": "1,84 €"}'
+    first, second = fake.received
+    assert first["tools"] == tools
+    tool_line = second["messages"][-1]
+    assert tool_line == {"role": "tool", "tool_call_id": "appel-1", "content": '{"cost": "1,84 €"}'}
+    assert second["messages"][-2]["tool_calls"][0]["function"]["name"] == "get_day_plan"
+
+
+def test_the_last_round_offers_no_tool(fake: FakeOpenWebUI) -> None:
+    """Un modèle qui appellerait des outils sans fin : au dernier tour, plus d'outils proposés,
+    il répond avec ce qu'il a lu."""
+    fake.tool_call = {"name": "get_home", "arguments": {}}
+    fake.endless = True
+    calls = 0
+
+    async def call(name: str, arguments: dict[str, Any]) -> str:
+        nonlocal calls
+        calls += 1
+        return "{}"
+
+    tools = [{"type": "function", "function": {"name": "get_home", "parameters": {}}}]
+    setting = OpenWebUISetting(url=fake.url, api_key=KEY)
+    reply = asyncio.run(complete(setting, "qwen3", "Prompt", [], "Maison ?", tools, call))
+
+    assert reply == "Outil lu : {}"
+    assert calls == MAX_TOOL_ROUNDS == len(fake.received) - 1
+    assert "tools" not in fake.received[-1] and "tools" in fake.received[-2]
 
 
 def test_the_key_is_kept_replaced_or_cleared() -> None:
@@ -159,6 +222,22 @@ def test_the_api_never_returns_the_key(tmp_path: Path, fake: FakeOpenWebUI) -> N
         assert reply == {"text": "Vu : qwen2.5:14b", "conversation_id": None, "error": False}
         system = fake.received[-1]["messages"][0]
         assert system["role"] == "system" and system["content"]  # prompt conseillé, en anglais
+        # Les outils de WattSlot partent avec la question, et l'application les exécute.
+        names = {t["function"]["name"] for t in fake.received[-1]["tools"]}
+        assert {"get_day_plan", "get_home", "request_device"} <= names
+        fake.tool_call = {"name": "get_home", "arguments": "{}"}
+        reply = api.post(
+            "/api/assistant/chat",
+            json={"text": "Ma maison ?", "agent_id": "open_webui:qwen2.5:14b"},
+        ).json()
+        assert reply["text"].startswith("Outil lu : {")  # résultat JSON de get_home
+        fake.tool_call = {"name": "outil_inconnu", "arguments": "{}"}
+        reply = api.post(
+            "/api/assistant/chat",
+            json={"text": "Et ça ?", "agent_id": "open_webui:qwen2.5:14b"},
+        ).json()
+        assert reply["text"].startswith('Outil lu : {"error": "tool_f')  # rendu au modèle
+        fake.tool_call = None
 
         wrong = api.post("/api/assistant/open-webui/test", json={"url": fake.url, "api_key": "x"})
         assert wrong.status_code == 502 and "x" not in wrong.json()["detail"].split()

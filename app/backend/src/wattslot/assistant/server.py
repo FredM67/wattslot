@@ -7,11 +7,14 @@ adresse sur le réseau local, comme l'interface (point n° 2). En mode extension
 accède (``ingress.py``).
 """
 
+import json
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Any, Literal
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
+from mcp.shared.exceptions import MCPError
 from mcp.types import ToolAnnotations
 from starlette.routing import BaseRoute
 
@@ -112,6 +115,32 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
         return tools.request_device(state(), device, latest_date, confirm)
 
     return server
+
+
+async def openai_tools(server: MCPServer) -> list[dict[str, Any]]:
+    """Outils du serveur au format des API compatibles OpenAI (Open WebUI en appel direct)."""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description or "",
+                "parameters": tool.input_schema,
+            },
+        }
+        for tool in await server.list_tools()
+    ]
+
+
+async def call_text(server: MCPServer, name: str, arguments: dict[str, Any]) -> str:
+    """Résultat d'un outil en texte, comme le lit un client MCP ; une erreur (outil inconnu,
+    arguments refusés) en objet JSON, pour que le modèle la lise au lieu d'interrompre."""
+    try:
+        result = await server.call_tool(name, arguments)
+    except (ToolError, MCPError) as error:  # UnexpectedToolError est une ToolError
+        return json.dumps({"error": "tool_failed", "hint": str(error)[:300]})
+    texts = [getattr(c, "text", "") for c in getattr(result, "content", None) or []]
+    return "\n".join(t for t in texts if t) or "{}"
 
 
 def routes(server: MCPServer) -> list[BaseRoute]:

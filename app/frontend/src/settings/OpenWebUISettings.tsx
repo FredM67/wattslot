@@ -131,6 +131,7 @@ export default function OpenWebUISettings({ mode }: { mode: "addon" | "standalon
 
       <details className="plan-more">
         <summary>{t("settings.open_webui.tools")}</summary>
+        <p>{t("settings.open_webui.tools_page")}</p>
         <ol>
           <li>{t("settings.open_webui.tools_server")}</li>
           <li>{t("settings.open_webui.tools_model")}</li>

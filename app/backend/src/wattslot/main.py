@@ -617,14 +617,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             setting = open_webui.load(request.app.state.database)
             if not setting.ready:
                 raise HTTPException(status_code=503, detail="Open WebUI non configuré")
+            mcp = request.app.state.mcp
+
+            async def call(name: str, arguments: dict[str, Any]) -> str:
+                return await assistant_server.call_text(mcp, name, arguments)
+
             try:
-                text = await asyncio.to_thread(
-                    open_webui.complete,
+                # Les outils de WattSlot avec la question, exécutés ici (open_webui.py).
+                text = await open_webui.complete(
                     setting,
                     agent.removeprefix(open_webui.AGENT_PREFIX),
                     assistant_prompts.prompt(message.language),
                     message.history,
                     message.text,
+                    await assistant_server.openai_tools(mcp),
+                    call,
                 )
             except open_webui.OpenWebUIError as error:
                 raise HTTPException(status_code=502, detail=str(error)) from error

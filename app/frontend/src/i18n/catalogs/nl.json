@@ -577,9 +577,10 @@
       "invalid": "Ongeldig adres: het begint met http:// of https://.",
       "failed": "Opslaan mislukt, probeer het opnieuw.",
       "tools": "De gegevens van WattSlot aan Open WebUI geven",
+      "tools_page": "De pagina Assistent geeft de gegevens van WattSlot zelf aan het gekozen model: daarvoor hoeft niets ingesteld te worden. Om in Open WebUI zelf te chatten:",
       "tools_server": "In Open WebUI: Beheerpaneel › Instellingen › Externe tools › ‘+’, type MCP (Streamable HTTP), met het adres van de MCP-server van de app hierboven.",
       "tools_model": "Daarna Werkruimte › Modellen › het gekozen model bewerken › Tools: vink de server van WattSlot aan. Plak ook de aanbevolen prompt (pagina Assistent) in de systeemprompt als u die standaard wilt.",
-      "tools_addon": "Als add-on is de MCP-server alleen bereikbaar voor Home Assistant: een elders geïnstalleerde Open WebUI kan hem niet gebruiken. Het model antwoordt dan zonder de gegevens van WattSlot.",
+      "tools_addon": "Als add-on is de MCP-server alleen bereikbaar voor Home Assistant: in een elders geïnstalleerde Open WebUI antwoordt het model zonder de gegevens van WattSlot (de pagina Assistent geeft ze hem wel).",
       "tools_standalone": "Open WebUI moet het adres van de app op uw lokale netwerk kunnen bereiken."
     }
   },

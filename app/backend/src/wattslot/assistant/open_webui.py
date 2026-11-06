@@ -5,12 +5,19 @@ Adresse et clé d'API sont gardées dans ``app_settings`` ; la clé ne revient j
 (``has_key`` seulement), n'est écrite dans aucun journal ni message d'erreur, et n'entre pas
 dans l'export de la maison. Open WebUI ne garde pas le fil par cette API : la page renvoie
 l'historique avec chaque message, après le prompt conseillé en instructions système.
+
+Les outils de WattSlot partent avec la question et WattSlot les exécute lui-même : par cette
+API, Open WebUI n'ajoute pas les outils attachés au modèle dans son interface, et le modèle
+répondait sans rien lire (« le plan n'est pas encore calculé »). Avec ``tools`` dans la
+requête, Open WebUI transmet les définitions au modèle et rend ses appels sans les exécuter.
 """
 
+import asyncio
 import json
 import sqlite3
 import urllib.error
 import urllib.request
+from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -21,6 +28,11 @@ SETTINGS_KEY = "open_webui"
 AGENT_PREFIX = "open_webui:"  # agent du chat : « open_webui:<modèle> »
 MODELS_TIMEOUT_S = 15
 CHAT_TIMEOUT_S = 120
+# Tours d'appels d'outils au plus ; au dernier, plus d'outils proposés : le modèle doit répondre.
+MAX_TOOL_ROUNDS = 6
+
+# Exécute un outil de WattSlot (nom, arguments) et rend son résultat en texte.
+ToolCaller = Callable[[str, dict[str, Any]], Awaitable[str]]
 
 
 class OpenWebUISetting(BaseModel):
@@ -125,24 +137,58 @@ def models(setting: OpenWebUISetting) -> list[Model]:
     )
 
 
-def complete(
+async def complete(
     setting: OpenWebUISetting,
     model: str,
     system: str,
     history: list[HistoryLine],
     text: str,
+    tools: list[dict[str, Any]] | None = None,
+    call: ToolCaller | None = None,
 ) -> str:
-    """Réponse du modèle au message ``text``, après les instructions et l'historique."""
-    messages = [{"role": "system", "content": system}]
+    """Réponse du modèle au message ``text``, après les instructions et l'historique ; avec
+    ``tools`` et ``call``, les appels d'outils du modèle sont exécutés et leurs résultats lui
+    sont rendus, jusqu'à sa réponse."""
+    messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
     messages += [line.model_dump() for line in history]
     messages.append({"role": "user", "content": text})
-    found = _request(
-        setting,
-        "/api/chat/completions",
-        {"model": model, "messages": messages, "stream": False},
-        CHAT_TIMEOUT_S,
-    )
-    try:
-        return str(found["choices"][0]["message"]["content"] or "")
-    except (KeyError, IndexError, TypeError):
-        raise OpenWebUIError("réponse sans message") from None
+    body: dict[str, Any] = {"model": model, "messages": messages, "stream": False}
+    for round_ in range(MAX_TOOL_ROUNDS + 1):
+        if tools and call is not None and round_ < MAX_TOOL_ROUNDS:
+            body["tools"] = tools
+        else:
+            body.pop("tools", None)
+        found = await asyncio.to_thread(
+            _request, setting, "/api/chat/completions", body, CHAT_TIMEOUT_S
+        )
+        try:
+            message = found["choices"][0]["message"]
+        except (KeyError, IndexError, TypeError):
+            raise OpenWebUIError("réponse sans message") from None
+        calls = message.get("tool_calls") or []
+        if not calls or call is None or "tools" not in body:
+            return str(message.get("content") or "")
+        messages.append(
+            {"role": "assistant", "content": message.get("content") or "", "tool_calls": calls}
+        )
+        for tool_call in calls:
+            function = tool_call.get("function") or {}
+            name = str(function.get("name") or "")
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": str(tool_call.get("id") or name),
+                    "content": await call(name, _arguments(function.get("arguments"))),
+                }
+            )
+    raise OpenWebUIError("réponse sans message")  # pas atteint : le dernier tour est sans outils
+
+
+def _arguments(raw: Any) -> dict[str, Any]:
+    """Arguments d'un appel : un objet, ou sa forme JSON (API compatible OpenAI)."""
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw or "{}")
+        except ValueError:
+            return {}
+    return raw if isinstance(raw, dict) else {}
