@@ -632,7 +632,9 @@
     "connect_token": "Verbinden met dit token",
     "security": "De verbinding wordt bewaard op het apparaat waarop de toepassing draait, nooit in een export of rapport. Stel de toepassing alleen open op uw lokale netwerk: ze heeft geen eigen aanmelding.",
     "retry": "Nu opnieuw proberen",
-    "checking": "Controleren…"
+    "checking": "Controleren…",
+    "connect_title": "Verbinden",
+    "saved_title": "Opgeslagen verbinding"
   },
   "home": {
     "title": "Mijn huis",

@@ -1,5 +1,6 @@
 // Page Réglages (lot 6b.6) : une liste, chaque ligne avec un résumé de son réglage, qui ouvre sa
-// sous-page ; les réglages techniques sous « Pour aller plus loin ». Les résumés sont lus à
+// sous-page ; les réglages techniques sous « Pour aller plus loin ». Sauvegarde et bibliothèque
+// d'appareils sont dans Ma maison, sans lien en double ici. Les résumés sont lus à
 // l'ouverture ; une réponse manquante laisse la ligne sans résumé.
 
 import { useEffect, useState } from "react";
@@ -117,8 +118,6 @@ export default function SettingsHome() {
           </span>
         </a>
         <LinkRow route={{ section: "settings", sub: "calculation" }} label={t("nav.calculation")} description={plannerText()} />
-        <LinkRow route={{ section: "home", sub: "backup" }} label={t("nav.backup")} />
-        <LinkRow route={{ section: "home", sub: "library" }} label={t("nav.library")} />
         <LinkRow
           route={{ section: "settings", sub: "connection" }}
           label={t("nav.connection")}

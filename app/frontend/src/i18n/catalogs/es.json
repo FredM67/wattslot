@@ -632,7 +632,9 @@
     "connect_token": "Conectar con este token",
     "security": "La conexión se guarda en el equipo donde funciona la aplicación, nunca en una exportación ni en un informe. Exponga la aplicación solo en su red local: no tiene inicio de sesión propio.",
     "retry": "Reintentar ahora",
-    "checking": "Comprobando…"
+    "checking": "Comprobando…",
+    "connect_title": "Conectarse",
+    "saved_title": "Conexión guardada"
   },
   "home": {
     "title": "Mi casa",

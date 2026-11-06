@@ -632,7 +632,9 @@
     "connect_token": "Mit diesem Token verbinden",
     "security": "Die Verbindung wird auf dem Gerät gespeichert, auf dem die Anwendung läuft, niemals in einem Export oder Bericht. Machen Sie die Anwendung nur im lokalen Netz erreichbar: Sie hat keine eigene Anmeldung.",
     "retry": "Jetzt erneut versuchen",
-    "checking": "Prüfen…"
+    "checking": "Prüfen…",
+    "connect_title": "Verbinden",
+    "saved_title": "Gespeicherte Verbindung"
   },
   "home": {
     "title": "Mein Zuhause",

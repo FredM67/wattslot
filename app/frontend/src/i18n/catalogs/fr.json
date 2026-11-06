@@ -632,7 +632,9 @@
     "connect_token": "Se connecter avec ce jeton",
     "security": "La connexion est gardée sur l'appareil qui fait tourner l'application, jamais dans un export ni un rapport. N'exposez l'application que sur votre réseau local : elle n'a pas d'identification propre.",
     "retry": "Réessayer maintenant",
-    "checking": "Vérification…"
+    "checking": "Vérification…",
+    "connect_title": "Se connecter",
+    "saved_title": "Connexion enregistrée"
   },
   "home": {
     "title": "Ma maison",
