@@ -420,7 +420,7 @@
     "loading": "Reading the settings…",
     "error": "Unable to read the settings.",
     "title": "Settings",
-    "intro": "How the application works: where requests come from, where to send the daily recommendation, when to compute the plan.",
+    "intro": "Where requests come from, when to recompute the plan, and which solar forecast to use as a fallback.",
     "not_connected": "Home Assistant is not connected: the lists are empty, the saved settings remain valid.",
     "none": "none",
     "unknown": "{id} (not found in Home Assistant)",
@@ -492,7 +492,8 @@
       "title": "Fallback solar forecast",
       "help": "Used only if the Home Assistant Energy dashboard gives no forecast: sensors giving a power forecast in watts (like the Helios integration).",
       "entities": "Forecast sensors",
-      "none": "No compatible forecast sensor found in Home Assistant."
+      "none": "No compatible forecast sensor found in Home Assistant.",
+      "selected": "{count} of {total} used"
     },
     "scheduler": {
       "title": "Automatic computation",

@@ -420,7 +420,7 @@
     "loading": "Einstellungen werden gelesen…",
     "error": "Die Einstellungen können nicht gelesen werden.",
     "title": "Einstellungen",
-    "intro": "Wie die Anwendung arbeitet: woher die Anfragen kommen, wohin die Tagesempfehlung geht, wann der Plan berechnet wird.",
+    "intro": "Woher die Anfragen kommen, wann der Plan neu berechnet wird und welche Solarprognose als Ersatz dient.",
     "not_connected": "Home Assistant ist nicht verbunden: Die Listen sind leer, die gespeicherten Einstellungen bleiben gültig.",
     "none": "keine",
     "unknown": "{id} (in Home Assistant nicht gefunden)",
@@ -492,7 +492,8 @@
       "title": "Ersatz-Solarprognose",
       "help": "Nur verwendet, wenn das Energie-Dashboard von Home Assistant keine Prognose liefert: Sensoren mit einer Leistungsprognose in Watt (wie die Integration Helios).",
       "entities": "Prognosesensoren",
-      "none": "Kein passender Prognosesensor in Home Assistant gefunden."
+      "none": "Kein passender Prognosesensor in Home Assistant gefunden.",
+      "selected": "{count} von {total} verwendet"
     },
     "scheduler": {
       "title": "Automatische Berechnung",

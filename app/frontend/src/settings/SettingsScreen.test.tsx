@@ -79,8 +79,11 @@ describe("SettingsScreen", () => {
     renderScreen("calculation");
 
     await user.selectOptions(await screen.findByLabelText("Liste de tâches"), "todo.courses");
-    await user.click(screen.getByLabelText("Prévision (sensor.helios_forecast)"));
-    await user.click(screen.getByLabelText("Recalculer le plan chaque heure"));
+    await user.click(screen.getByRole("switch", { name: "Prévision" }));
+    expect(screen.getByText(/1 sur 1 utilisé/)).toBeTruthy();
+    expect(screen.getByLabelText("À la minute")).toHaveValue(59);
+    await user.click(screen.getByRole("switch", { name: "Recalculer le plan chaque heure" }));
+    expect(screen.queryByLabelText("À la minute")).toBeNull();
     expect(screen.queryByLabelText("Appareil commun")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 

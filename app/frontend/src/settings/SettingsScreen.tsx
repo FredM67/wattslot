@@ -14,7 +14,9 @@ import { useI18n } from "../i18n/I18nProvider";
 import AppearanceSection from "./AppearanceSection";
 import SettingsHome from "./SettingsHome";
 import NotificationSettingsSection, { type NotificationSettings } from "./NotificationSettings";
+import { SettingList } from "../ui/SettingRow";
 import StateMessage from "../ui/StateMessage";
+import Switch from "../ui/Switch";
 import VoiceSettings from "./VoiceSettings";
 
 export interface PlanningSettings {
@@ -57,6 +59,8 @@ type Load =
     };
 
 type Save = "idle" | "saving" | "saved" | "invalid" | "failed";
+const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 function label(choice: Choice): string {
   return choice.name ? `${choice.name} (${choice.id})` : choice.id;
 }
@@ -191,7 +195,7 @@ function SettingsForm({ page }: { page: "notifications" | "calculation" }) {
           {t("settings.not_connected")}
         </p>
       )}
-      {page === "calculation" && <p>{t("settings.intro")}</p>}
+      {page === "calculation" && <p className="settings-note settings-intro">{t("settings.intro")}</p>}
 
       {page === "notifications" && (
         <NotificationSettingsSection
@@ -202,71 +206,100 @@ function SettingsForm({ page }: { page: "notifications" | "calculation" }) {
       )}
       {page === "calculation" && (
         <>
-      <h3 id="tasks">{t("settings.tasks.title")}</h3>
-      <p>{t("settings.tasks.help")}</p>
-      <label htmlFor="todo-entity">{t("settings.tasks.list")}</label>{" "}
-      <ChoiceSelect
-        id="todo-entity"
-        value={settings.todo_entity}
-        choices={choices.todo_lists}
-        onChange={(todo_entity) => change({ todo_entity })}
-      />
+          <h3 id="tasks" className="home-summary-heading">
+            {t("settings.tasks.title")}
+          </h3>
+          <SettingList>
+            <div className="ui-setting-row">
+              <span>
+                <label className="ui-row-label" htmlFor="todo-entity">
+                  {t("settings.tasks.list")}
+                </label>
+                <span className="ui-row-help">{t("settings.tasks.help")}</span>
+              </span>
+              <ChoiceSelect
+                id="todo-entity"
+                value={settings.todo_entity}
+                choices={choices.todo_lists}
+                onChange={(todo_entity) => change({ todo_entity })}
+              />
+            </div>
+          </SettingList>
 
+          <h3 id="scheduler" className="home-summary-heading">
+            {t("settings.scheduler.title")}
+          </h3>
+          <SettingList>
+            <Switch
+              label={t("settings.scheduler.enabled")}
+              description={
+                settings.scheduler_enabled && scheduler?.enabled && scheduler.next_run_at
+                  ? t("settings.scheduler.next", { time: new Date(scheduler.next_run_at).toLocaleString() })
+                  : undefined
+              }
+              checked={settings.scheduler_enabled}
+              onChange={(scheduler_enabled) => change({ scheduler_enabled })}
+            />
+            {settings.scheduler_enabled && (
+              <div className="ui-setting-row settings-row-inline">
+                <label className="ui-row-label" htmlFor="run-minute">
+                  {capitalized(t("settings.scheduler.minute"))}
+                </label>
+                <input
+                  id="run-minute"
+                  className="settings-minute"
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={settings.run_minute}
+                  onChange={(event) => {
+                    const minute = Math.round(Number(event.target.value));
+                    if (Number.isFinite(minute)) change({ run_minute: Math.min(59, Math.max(0, minute)) });
+                  }}
+                />
+              </div>
+            )}
+          </SettingList>
 
-      <h3 id="forecast">{t("settings.forecast.title")}</h3>
-      <p>{t("settings.forecast.help")}</p>
-      {forecastChoices.length === 0 ? (
-        <p>{t("settings.forecast.none")}</p>
-      ) : (
-        <fieldset>
-          <legend>{t("settings.forecast.entities")}</legend>
-          {forecastChoices.map((choice) => (
-            <label key={choice.id}>
-              <input
-                type="checkbox"
-                checked={settings.forecast_entities.includes(choice.id)}
-                onChange={(event) =>
-                  change({
-                    forecast_entities: event.target.checked
-                      ? [...settings.forecast_entities, choice.id]
-                      : settings.forecast_entities.filter((id) => id !== choice.id),
-                  })
-                }
-              />{" "}
-              {label(choice)}
-            </label>
-          ))}
-        </fieldset>
-      )}
-
-      <h3 id="scheduler">{t("settings.scheduler.title")}</h3>
-      <label>
-        <input
-          type="checkbox"
-          checked={settings.scheduler_enabled}
-          onChange={(event) => change({ scheduler_enabled: event.target.checked })}
-        />{" "}
-        {t("settings.scheduler.enabled")}
-      </label>{" "}
-      <label>
-        {t("settings.scheduler.minute")}{" "}
-        <input
-          type="number"
-          min={0}
-          max={59}
-          value={settings.run_minute}
-          disabled={!settings.scheduler_enabled}
-          onChange={(event) => {
-            const minute = Math.round(Number(event.target.value));
-            if (Number.isFinite(minute)) change({ run_minute: Math.min(59, Math.max(0, minute)) });
-          }}
-        />
-      </label>
-      {scheduler?.enabled && scheduler.next_run_at && (
-        <p>{t("settings.scheduler.next", { time: new Date(scheduler.next_run_at).toLocaleString() })}</p>
-      )}
-
-
+          <h3 id="forecast" className="home-summary-heading">
+            {t("settings.forecast.title")}
+            {forecastChoices.length > 0 && (
+              <span className="settings-aside">
+                {" "}
+                ·{" "}
+                {t("settings.forecast.selected", {
+                  count: settings.forecast_entities.length,
+                  total: forecastChoices.length,
+                })}
+              </span>
+            )}
+          </h3>
+          <p className="settings-note settings-intro">{t("settings.forecast.help")}</p>
+          {forecastChoices.length === 0 ? (
+            <p className="settings-note">{t("settings.forecast.none")}</p>
+          ) : (
+            <div className="ui-setting-list forecast-sensors" role="group" aria-label={t("settings.forecast.entities")}>
+              {forecastChoices.map((choice) => (
+                <Switch
+                  key={choice.id}
+                  label={choice.name ?? choice.id}
+                  description={
+                    choices.forecast_entities.some((known) => known.id === choice.id)
+                      ? choice.id
+                      : t("settings.unknown", { id: choice.id })
+                  }
+                  checked={settings.forecast_entities.includes(choice.id)}
+                  onChange={(checked) =>
+                    change({
+                      forecast_entities: checked
+                        ? [...settings.forecast_entities, choice.id]
+                        : settings.forecast_entities.filter((id) => id !== choice.id),
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
 

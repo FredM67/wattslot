@@ -2777,7 +2777,7 @@ p[role="status"]:not(.state-message) {
   justify-content: flex-start;
 }
 
-.voice-optional {
+.settings-aside {
   font-weight: 400;
   letter-spacing: normal;
   text-transform: none;
@@ -3130,4 +3130,25 @@ p[role="status"]:not(.state-message) {
   position: sticky;
   top: 0;
   background: var(--surface);
+}
+
+/* Calcul automatique : minute en champ court, identifiants des capteurs en police fixe. */
+.settings-page .ui-setting-row input.settings-minute {
+  width: 5.5rem;
+  min-width: 0;
+}
+
+.forecast-sensors .ui-row-help {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.settings-page .settings-intro {
+  margin-bottom: 0.5rem;
+}
+
+/* Ligne courte (libellé et petit champ) : reste sur une ligne, même sur téléphone. */
+.settings-page .settings-row-inline > :first-child {
+  flex: 1 1 auto;
 }

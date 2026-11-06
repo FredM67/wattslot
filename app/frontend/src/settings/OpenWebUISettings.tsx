@@ -81,7 +81,7 @@ export default function OpenWebUISettings() {
   return (
     <>
       <h3 id="open-webui" className="home-summary-heading">
-        {t("settings.open_webui.title")} <span className="voice-optional">· {t("settings.open_webui.optional")}</span>
+        {t("settings.open_webui.title")} <span className="settings-aside">· {t("settings.open_webui.optional")}</span>
       </h3>
       <SettingList>
         <div className="ui-setting-row">

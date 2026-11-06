@@ -420,7 +420,7 @@
     "loading": "Lettura delle impostazioni…",
     "error": "Impossibile leggere le impostazioni.",
     "title": "Impostazioni",
-    "intro": "Come funziona l'applicazione: da dove arrivano le richieste, dove inviare la raccomandazione del giorno, quando calcolare il piano.",
+    "intro": "Da dove arrivano le richieste, quando ricalcolare il piano e quale previsione solare usare come riserva.",
     "not_connected": "Home Assistant non è connesso: gli elenchi sono vuoti, le impostazioni salvate restano valide.",
     "none": "nessuno",
     "unknown": "{id} (non trovato in Home Assistant)",
@@ -492,7 +492,8 @@
       "title": "Previsione solare di riserva",
       "help": "Usata solo se la dashboard energia di Home Assistant non fornisce alcuna previsione: sensori che danno una previsione di potenza in watt (come l'integrazione Helios).",
       "entities": "Sensori di previsione",
-      "none": "Nessun sensore di previsione compatibile trovato in Home Assistant."
+      "none": "Nessun sensore di previsione compatibile trovato in Home Assistant.",
+      "selected": "{count} su {total} in uso"
     },
     "scheduler": {
       "title": "Calcolo automatico",
