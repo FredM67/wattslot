@@ -9,6 +9,7 @@ import { ApiError, deleteRequest, getJson, postJson } from "../api";
 import { useI18n } from "../i18n/I18nProvider";
 import { formatNumber, type Language } from "../i18n/translate";
 import Button from "../ui/Button";
+import Icon from "../ui/Icon";
 import Sheet from "../ui/Sheet";
 import SettingRow, { SettingList } from "../ui/SettingRow";
 import { useShowMore } from "../ui/ShowMore";
@@ -174,34 +175,30 @@ export default function DataTab({ data }: { data: HomeData }) {
     `${c.original_kwh === null ? "—" : kwh(language, c.original_kwh)} → ${
       c.corrected_kwh === null ? t("quality.discarded") : kwh(language, c.corrected_kwh)
     }`;
-  const rows = (list: Group[]) => (
-    <SettingList>
-      {list.map((group) => (
-        <SettingRow
-          key={group.main.id}
-          label={name(group.main.entity_id)}
-          description={`${periodText(language, group.main.period, group.main.start)} · ${valueText(group.main)}`}
-          onOpen={() => setOpen(group)}
-        />
-      ))}
-    </SettingList>
-  );
 
+  // Carte d'état, comme les sous-pages des Réglages : pastille verte si rien n'a été corrigé,
+  // neutre sinon (une correction n'est pas une panne), et « Analyser une période ».
   return (
-    <>
-      <div className={corrections.length > 0 ? "card quality-summary" : "card quality-summary quality-clean"}>
-        <strong>
-          {corrections.length > 0
-            ? t("quality.summary.corrected", { count: corrections.length })
-            : t("quality.summary.clean")}
-        </strong>
-        <small>
-          {checked
-            ? t("quality.summary.checked", {
-                time: new Date(checked).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" }),
-              })
-            : t("quality.summary.not_checked")}
-        </small>
+    <div className="settings-page quality-page">
+      <div className="ui-card settings-state">
+        <span className="status-dot" data-level={corrections.length > 0 ? "setup" : "ok"} aria-hidden="true" />
+        <span className="settings-state-text">
+          <span className="ui-row-label">
+            {corrections.length > 0
+              ? t("quality.summary.corrected", { count: corrections.length })
+              : t("quality.summary.clean")}
+          </span>
+          <span className="ui-row-help">
+            {checked
+              ? t("quality.summary.checked", {
+                  time: new Date(checked).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" }),
+                })
+              : t("quality.summary.not_checked")}
+          </span>
+        </span>
+        <Button variant="quiet" icon="target" onClick={() => setScanning(true)}>
+          {t("quality.scan.open")}
+        </Button>
       </div>
 
       {corrections.length > 0 && (
@@ -223,21 +220,30 @@ export default function DataTab({ data }: { data: HomeData }) {
               />
             ))}
           </SettingList>
-          <p className="dim">{t("quality.gaps_help")}</p>
+          <p className="settings-note">{t("quality.gaps_help")}</p>
         </>
       )}
 
-      <p>
-        <Button icon="target" onClick={() => setScanning(true)}>
-          {t("quality.scan.open")}
-        </Button>
-      </p>
-
       {undone.length > 0 && (
-        <details>
-          <summary>{t("quality.undone", { count: undone.length })}</summary>
-          {rows(undone)}
-        </details>
+        <>
+          <h3 className="home-summary-heading">{t("nav.more")}</h3>
+          <SettingList>
+            <details className="ui-setting-row settings-details quality-undone">
+              <summary>
+                <span className="ui-row-label">{t("quality.undone", { count: undone.length })}</span>
+                <Icon name="chevron-right" size={18} />
+              </summary>
+              {undone.map((group) => (
+                <SettingRow
+                  key={group.main.id}
+                  label={name(group.main.entity_id)}
+                  description={`${periodText(language, group.main.period, group.main.start)} · ${valueText(group.main)}`}
+                  onOpen={() => setOpen(group)}
+                />
+              ))}
+            </details>
+          </SettingList>
+        </>
       )}
 
       {open && (
@@ -261,7 +267,7 @@ export default function DataTab({ data }: { data: HomeData }) {
           onScanned={reload}
         />
       )}
-    </>
+    </div>
   );
 }
 

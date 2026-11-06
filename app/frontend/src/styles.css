@@ -1083,6 +1083,16 @@ pre {
   font-weight: 700;
 }
 
+/* Un identifiant d'entité, sans espace, passe à la ligne plutôt que de sortir de la carte. */
+.ui-setting-row > span:first-child {
+  min-width: 0;
+}
+
+.ui-row-label,
+.ui-row-help {
+  overflow-wrap: anywhere;
+}
+
 .ui-row-help {
   display: block;
   font-size: 0.85rem;
@@ -1859,16 +1869,6 @@ a.ui-setting-row {
 }
 
 /* Onglet « Données » : résumé de la qualité des données en tête. */
-.quality-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.quality-summary.quality-clean {
-  border-color: var(--ok);
-}
-
 .home-search {
   width: 100%;
   margin-bottom: 0.6rem;
@@ -3008,6 +3008,7 @@ p[role="status"]:not(.state-message) {
 .settings-page > .home-summary-heading,
 .settings-page .home-summary-heading {
   margin-top: 1.25rem;
+  margin-bottom: 0.45rem;
 }
 
 /* État de l'application : valeurs à droite, problèmes en liste repliable, rapport et détail
