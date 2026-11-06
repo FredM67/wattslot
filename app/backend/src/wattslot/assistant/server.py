@@ -72,9 +72,12 @@ def build(state: Callable[[], Any], problems: Callable[[], Awaitable[Sequence[An
     async def get_forecast(day: str = "today") -> dict[str, Any]:
         # Banc d'essai (2 x 5 essais) : avec « up to about a week ahead », qwen3 n'appelait plus
         # get_tariff pour « le prix du kWh » (0 sur 10, contre 10 sur 10 avec ce texte).
-        # Un nombre de jours accepté : « dans 10 jours » sans date du jour connue (banc du 06/11).
-        """Weather and solar forecast of a day (today, tomorrow, a number of days from today
-        or YYYY-MM-DD): hour by hour today and tomorrow; says when the forecast ends."""
+        # Un nombre de jours, avec un exemple : sans date du jour connue, qwen3 refusait « dans
+        # 10 jours » sans outil (3 sur 3, et en anglais sans l'exemple) ; avec, il appelle
+        # day="10" (3 sur 3), Q5 et Q18 inchangées (banc du 06/11).
+        """Weather and solar forecast of a day: today, tomorrow, YYYY-MM-DD, or a number of days
+        from today ("10" for in 10 days). Hour by hour today and tomorrow; says when the
+        forecast ends."""
         return await tools.get_forecast(state(), day)
 
     @server.tool(annotations=READ_ONLY)
