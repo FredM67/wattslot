@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from wattslot.aggregation import AggregationStatus, Aggregator
 from wattslot.detection import Issue, propose
 from wattslot.home_assistant import ConnectionState, HomeAssistantClient
-from wattslot.ingestion import IngestionStatus, Ingestor
+from wattslot.ingestion import IngestionStatus, Ingestor, silent_entities
 from wattslot.maintenance import Maintenance, MaintenanceStatus
 from wattslot.planning.scheduler import PlanningScheduler, SchedulerStatus
 from wattslot.storage.raw import RawStores
@@ -37,6 +37,7 @@ class Diagnostic(BaseModel):
     written_bytes: int | None = None  # octets écrits sur disque depuis (Linux)
     ingestion: IngestionStatus | None = None
     today: dict[str, int] = {}  # relevés écrits aujourd'hui (heure locale), par entité
+    silent: list[str] = []  # entités muettes à valeur figée suspecte (``silent_entities``)
     aggregation: AggregationStatus | None = None
     maintenance: MaintenanceStatus | None = None
     planning: SchedulerStatus | None = None
@@ -114,13 +115,17 @@ def diagnostic(
     scheduler: PlanningScheduler | None = None,
 ) -> Diagnostic:
     """Lit les disques et le magasin du jour : à appeler hors de la boucle d'événements."""
+    now = datetime.now(UTC)
+    ingestion = ingestor.status() if ingestor else None
+    today = readings_today(ingestor, raw) if ingestor and raw else {}
     return Diagnostic(
-        generated_at=datetime.now(UTC),
+        generated_at=now,
         memory_bytes=memory_bytes(),
         started_at=STARTED_AT,
         written_bytes=disk_written_bytes(),
-        ingestion=ingestor.status() if ingestor else None,
-        today=readings_today(ingestor, raw) if ingestor and raw else {},
+        ingestion=ingestion,
+        today=today,
+        silent=silent_entities(ingestion, today, now),
         aggregation=aggregator.status() if aggregator else None,
         maintenance=maintenance.status() if maintenance else None,
         planning=scheduler.status() if scheduler else None,

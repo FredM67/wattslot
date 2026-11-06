@@ -18,9 +18,9 @@ from wattslot.configuration import Configuration
 from wattslot.diagnostic import Diagnostic
 from wattslot.home_assistant import HomeAssistantClient
 from wattslot.home_model import HomeModel
+from wattslot.ingestion import silent_entities
 from wattslot.setup import Setup, StepState
 
-SILENT_AFTER = timedelta(days=1)
 STALE_PLAN = timedelta(hours=2)
 PENDING_MAX = 1000
 UNAVAILABLE = {"unavailable", "unknown"}
@@ -95,14 +95,11 @@ def _setup_problems(setup: Setup) -> list[Problem]:
 def _sensor_problems(
     home: HomeModel, client: HomeAssistantClient | None, diagnostic: Diagnostic
 ) -> list[Problem]:
-    """Capteurs de la maison enregistrée : disparus de HA, indisponibles, ou muets depuis un
-    jour (aucun relevé aujourd'hui, et HA n'en a reçu aucun depuis un jour, même inchangé)."""
+    """Capteurs de la maison enregistrée : disparus de HA, indisponibles, ou muets avec une
+    valeur figée suspecte (``ingestion.silent_entities``)."""
     found = []
     states = client.snapshot.states if client is not None else None
-    last_times = {
-        e.entity_id: e.last_seen or e.last_time
-        for e in (diagnostic.ingestion.entities if diagnostic.ingestion else [])
-    }
+    silent = set(silent_entities(diagnostic.ingestion, diagnostic.today, diagnostic.generated_at))
     for device in home.devices:
         for sensor in device.sensors:
             params = {"device": device.name, "role": sensor.role.value, "entity": sensor.entity_id}
@@ -122,12 +119,8 @@ def _sensor_problems(
                     Problem(code="sensor_unavailable", severity=Severity.WATCH, params=params)
                 )
                 continue
-            if sensor.entity_id in last_times and diagnostic.today.get(sensor.entity_id, 0) == 0:
-                last = last_times[sensor.entity_id]
-                if last is None or diagnostic.generated_at - last > SILENT_AFTER:
-                    found.append(
-                        Problem(code="sensor_silent", severity=Severity.WATCH, params=params)
-                    )
+            if sensor.entity_id in silent:
+                found.append(Problem(code="sensor_silent", severity=Severity.WATCH, params=params))
     return found
 
 

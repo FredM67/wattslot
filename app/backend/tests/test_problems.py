@@ -137,28 +137,6 @@ def test_components_silent_sensors_and_statistics() -> None:
     )
 
 
-def test_a_stable_sensor_still_reporting_is_not_silent() -> None:
-    old = NOW - timedelta(days=3)
-    sensor = SOLAR.sensors[0].entity_id
-
-    def found(last_seen: datetime | None) -> list[str]:
-        status = EntityStatus(
-            entity_id=sensor, role=Role.ENERGY_PRODUCED, last_time=old, last_seen=last_seen
-        )
-        diagnostic = Diagnostic(
-            generated_at=NOW,
-            ingestion=IngestionStatus(
-                running=True, entities=[status], received=0, written=0, pending=0
-            ),
-        )
-        home = HomeModel(devices=[SOLAR.model_copy(update={"sensors": SOLAR.sensors[:1]})])
-        return codes(collect(_ready(), diagnostic, home, Configuration(), None))
-
-    assert "sensor_silent" not in found(NOW - timedelta(minutes=5))
-    assert "sensor_silent" in found(old)
-    assert "sensor_silent" in found(None)  # sans instantané : le dernier relevé reçu
-
-
 def _ready() -> Setup:
     return Setup(steps=[], ready=True)
 
