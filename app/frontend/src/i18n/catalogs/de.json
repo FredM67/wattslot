@@ -540,26 +540,26 @@
       "failed": "Die Währung konnte nicht gespeichert werden."
     },
     "voice": {
-      "state": "Status",
-      "current": "Aktuelle Einrichtung",
-      "address": "Adresse des MCP-Servers der App:",
+      "address": "Adresse",
       "mcp": "MCP-Integration in Home Assistant",
       "mcp_none": "nicht installiert",
-      "mcp_entry": "{title} ({state})",
       "mcp_states": {
         "loaded": "geladen",
         "error": "fehlerhaft",
         "not_loaded": "nicht geladen"
       },
-      "home": "Assistent von Home Assistant",
-      "home_help": "Der bevorzugte Assistent ist der, den Assist öffnet; sein Konversationsagent beantwortet die Fragen.",
+      "home": "Assist von Home Assistant",
       "pipeline": "Bevorzugter Assistent",
       "agent": "Konversationsagent",
       "no_pipeline": "Kein Assistent in Home Assistant.",
       "not_connected": "Home Assistant ist nicht verbunden: Der Assistent kann weder gelesen noch geändert werden.",
       "saved": "Assistent in Home Assistant geändert.",
       "invalid": "Home Assistant kennt diesen Assistenten oder Agenten nicht: Laden Sie die Seite neu.",
-      "failed": "Home Assistant hat die Änderung abgelehnt, versuchen Sie es erneut."
+      "failed": "Home Assistant hat die Änderung abgelehnt, versuchen Sie es erneut.",
+      "server": "MCP-Server",
+      "pipeline_help": "Der, den Assist öffnet",
+      "agent_help": "Das Modell, das die Fragen beantwortet",
+      "setup_help": "Die Schritte in Home Assistant"
     },
     "open_webui": {
       "title": "Open WebUI",
@@ -580,7 +580,9 @@
       "tools_server": "In Open WebUI: Administrationsbereich › Einstellungen › Externe Werkzeuge › „+“, Typ MCP (Streamable HTTP), mit der obigen Adresse des MCP-Servers der App.",
       "tools_model": "Dann Arbeitsbereich › Modelle › gewähltes Modell bearbeiten › Werkzeuge: den WattSlot-Server ankreuzen. Fügen Sie auch den empfohlenen Prompt (Seite Assistent) in seinen System-Prompt ein, wenn Sie ihn standardmäßig wollen.",
       "tools_addon": "Als Add-on ist der MCP-Server nur für Home Assistant erreichbar: In einem anderswo installierten Open WebUI antwortet das Modell ohne die Daten von WattSlot (die Seite Assistent gibt sie ihm).",
-      "tools_standalone": "Open WebUI muss die Adresse der App in Ihrem lokalen Netzwerk erreichen können."
+      "tools_standalone": "Open WebUI muss die Adresse der App in Ihrem lokalen Netzwerk erreichen können.",
+      "optional": "optional",
+      "tools_help": "Um in Open WebUI selbst zu chatten"
     }
   },
   "connection_page": {

@@ -540,26 +540,26 @@
       "failed": "Impossible d'enregistrer la devise."
     },
     "voice": {
-      "state": "État",
-      "current": "Configuration actuelle",
-      "address": "Adresse du serveur MCP de l'application :",
+      "address": "Adresse",
       "mcp": "Intégration MCP dans Home Assistant",
       "mcp_none": "non installée",
-      "mcp_entry": "{title} ({state})",
       "mcp_states": {
         "loaded": "chargée",
         "error": "en erreur",
         "not_loaded": "non chargée"
       },
-      "home": "Assistant de Home Assistant",
-      "home_help": "L'assistant préféré est celui qu'ouvre l'Assist ; son agent de conversation répond aux questions.",
+      "home": "Assist de Home Assistant",
       "pipeline": "Assistant préféré",
       "agent": "Agent de conversation",
       "no_pipeline": "Aucun assistant dans Home Assistant.",
       "not_connected": "Home Assistant n'est pas connecté : l'assistant ne peut pas être lu ni modifié.",
       "saved": "Assistant modifié dans Home Assistant.",
       "invalid": "Home Assistant ne connaît pas cet assistant ou cet agent : rechargez la page.",
-      "failed": "Home Assistant a refusé la modification, réessayez."
+      "failed": "Home Assistant a refusé la modification, réessayez.",
+      "server": "Serveur MCP",
+      "pipeline_help": "Celui qu'ouvre l'Assist",
+      "agent_help": "Le modèle qui répond aux questions",
+      "setup_help": "Les étapes dans Home Assistant"
     },
     "open_webui": {
       "title": "Open WebUI",
@@ -580,7 +580,9 @@
       "tools_server": "Dans Open WebUI : Panneau d'administration › Réglages › Outils externes › « + », type MCP (Streamable HTTP), avec l'adresse du serveur MCP de l'application ci-dessus.",
       "tools_model": "Puis Espace de travail › Modèles › modifier le modèle choisi › Outils : cochez le serveur de WattSlot. Collez aussi le prompt conseillé (page Assistant) dans ses instructions système si vous le voulez par défaut.",
       "tools_addon": "En extension, le serveur MCP n'est joignable que par Home Assistant : dans un Open WebUI installé ailleurs, le modèle répond sans les données de WattSlot (la page Assistant, elle, les lui donne).",
-      "tools_standalone": "Open WebUI doit pouvoir joindre l'adresse de l'application sur votre réseau local."
+      "tools_standalone": "Open WebUI doit pouvoir joindre l'adresse de l'application sur votre réseau local.",
+      "optional": "facultatif",
+      "tools_help": "Pour discuter dans Open WebUI lui-même"
     }
   },
   "connection_page": {

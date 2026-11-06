@@ -540,26 +540,26 @@
       "failed": "De valuta kon niet worden opgeslagen."
     },
     "voice": {
-      "state": "Status",
-      "current": "Huidige configuratie",
-      "address": "Adres van de MCP-server van de app:",
+      "address": "Adres",
       "mcp": "MCP-integratie in Home Assistant",
       "mcp_none": "niet geïnstalleerd",
-      "mcp_entry": "{title} ({state})",
       "mcp_states": {
         "loaded": "geladen",
         "error": "met fout",
         "not_loaded": "niet geladen"
       },
-      "home": "Assistent van Home Assistant",
-      "home_help": "De voorkeursassistent is de assistent die Assist opent; de gespreksagent ervan beantwoordt de vragen.",
+      "home": "Assist van Home Assistant",
       "pipeline": "Voorkeursassistent",
       "agent": "Gespreksagent",
       "no_pipeline": "Geen assistent in Home Assistant.",
       "not_connected": "Home Assistant is niet verbonden: de assistent kan niet worden gelezen of gewijzigd.",
       "saved": "Assistent gewijzigd in Home Assistant.",
       "invalid": "Home Assistant kent deze assistent of agent niet: laad de pagina opnieuw.",
-      "failed": "Home Assistant heeft de wijziging geweigerd, probeer het opnieuw."
+      "failed": "Home Assistant heeft de wijziging geweigerd, probeer het opnieuw.",
+      "server": "MCP-server",
+      "pipeline_help": "Die welke Assist opent",
+      "agent_help": "Het model dat de vragen beantwoordt",
+      "setup_help": "De stappen in Home Assistant"
     },
     "open_webui": {
       "title": "Open WebUI",
@@ -580,7 +580,9 @@
       "tools_server": "In Open WebUI: Beheerpaneel › Instellingen › Externe tools › ‘+’, type MCP (Streamable HTTP), met het adres van de MCP-server van de app hierboven.",
       "tools_model": "Daarna Werkruimte › Modellen › het gekozen model bewerken › Tools: vink de server van WattSlot aan. Plak ook de aanbevolen prompt (pagina Assistent) in de systeemprompt als u die standaard wilt.",
       "tools_addon": "Als add-on is de MCP-server alleen bereikbaar voor Home Assistant: in een elders geïnstalleerde Open WebUI antwoordt het model zonder de gegevens van WattSlot (de pagina Assistent geeft ze hem wel).",
-      "tools_standalone": "Open WebUI moet het adres van de app op uw lokale netwerk kunnen bereiken."
+      "tools_standalone": "Open WebUI moet het adres van de app op uw lokale netwerk kunnen bereiken.",
+      "optional": "optioneel",
+      "tools_help": "Om in Open WebUI zelf te chatten"
     }
   },
   "connection_page": {
