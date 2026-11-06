@@ -58,6 +58,7 @@
   "assistant.no_other": "No other appliance planned that day.",
   "assistant.off_now": "Right now: off.",
   "assistant.running_now": "Right now: running ({power}).",
+  "assistant.battery_end_of_day": "The battery ends the day at {percent}.",
   "assistant.home_about": "Appliances of the home, not the plan of the day: what runs on a day is in that day's plan.",
   "assistant.period.off_peak": "off-peak hours",
   "assistant.period.peak": "peak hours",

@@ -424,8 +424,14 @@ async def get_week(state: Any) -> dict[str, Any]:
                 "production_kwh": round(d.production_kwh, 1),
                 # La qualité en toutes lettres seulement : « sunny » était recopié tel quel.
                 **({"weather": WEATHER[lang][d.weather]} if d.weather else {}),
+                # En phrase : avec « battery_end_of_day_percent: 12 », qwen3-4b-thinking écrivait
+                # « la batterie se charge à 12 % chaque jour » (banc du 06/11).
                 **(
-                    {"battery_end_of_day_percent": round(d.soc_end_percent)}
+                    {
+                        "battery": catalog(lang)["assistant.battery_end_of_day"].format(
+                            percent=f"{number(d.soc_end_percent, lang, 0)}\u00a0%"
+                        )
+                    }
                     if d.soc_end_percent is not None
                     else {}
                 ),
@@ -592,7 +598,10 @@ async def get_energy(state: Any, day: str = "today") -> dict[str, Any]:
         }
     lang = language(state)
     today = today_of(state)
-    result: dict[str, Any] = {"day": _when(wanted, today, lang), "measured": measured or None}
+    result: dict[str, Any] = {
+        "day": _when(wanted, today, lang),
+        "measured": _energy_texts(measured, lang) if measured else None,
+    }
     if view is None:
         return result
     production = round(sum(h.production_kwh for h in view.hours), 2)
@@ -603,11 +612,10 @@ async def get_energy(state: Any, day: str = "today") -> dict[str, Any]:
         if row.kind != "battery"
     }
     if measured:
-        result["planned"] = {
-            "production_kwh": production,
-            "consumption_kwh": consumption,
-            "devices": devices,
-        }
+        result["planned"] = _energy_texts(
+            {"production_kwh": production, "consumption_kwh": consumption, "devices": devices},
+            lang,
+        )
         return result
     # Rien de mesuré (tôt le matin, ou sans HA) : en phrases, « prévu » collé aux chiffres. Avec
     # les champs du plan à côté d'un « measured » vide, les quatre modèles du banc d'essai
@@ -620,8 +628,19 @@ async def get_energy(state: Any, day: str = "today") -> dict[str, Any]:
         consumption=number(consumption, lang, 2), production=number(production, lang, 2)
     )
     if devices:
-        result["planned_appliances_kwh"] = devices
+        result["planned_appliances_kwh"] = _energy_texts(devices, lang)
     return result
+
+
+def _energy_texts(values: dict[str, Any], lang: str) -> dict[str, Any]:
+    """Énergies au format de la langue, unité comprise (« 0,89 kWh ») : avec les nombres bruts,
+    les modèles du banc recopiaient « 0.89 kWh » en français (banc du 06/11)."""
+    return {
+        key: _energy_texts(value, lang)
+        if isinstance(value, dict)
+        else f"{number(value, lang, 2)}\u00a0kWh"
+        for key, value in values.items()
+    }
 
 
 async def get_forecast(state: Any, day: str = "today") -> dict[str, Any]:

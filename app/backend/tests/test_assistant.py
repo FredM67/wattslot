@@ -24,6 +24,7 @@ from wattslot.assistant.prompts import prompt
 from wattslot.assistant.tools import (
     PENDING_FOR,
     WEATHER,
+    _energy_texts,
     _max_hour,
     _next_action,
     _power_now,
@@ -145,6 +146,10 @@ def test_day_plan_and_week(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> 
         == f"Pas de prévision au-delà du {long_date(days[1]['date_cible'], 'fr')}."
     )
     assert all(d.get("weather", "journée").startswith("journée") for d in week["days"])
+    # La batterie en phrase : « battery_end_of_day_percent » était lu « se charge à 12 % ».
+    battery = [d["battery"] for d in week["days"] if "battery" in d]
+    assert battery and all(b.startswith("La batterie finit la journée à ") for b in battery)
+    assert all(not k.startswith("battery_") for d in week["days"] for k in d)
 
     # Prévision d'une date : la journée après demain, la fin des prévisions au-delà.
     monkeypatch.setattr("wattslot.assistant.tools.today_of", lambda _: first - timedelta(days=2))
@@ -248,6 +253,7 @@ def test_energy_forecast_home_status_and_problems(api: TestClient) -> None:
     assert energy["measured"] == "Aucune mesure pour ce jour."
     assert energy["planned"].startswith("Prévu sur la journée, rien de mesuré : consommation ")
     assert {"Lave-linge", "Sèche-linge"} <= set(energy["planned_appliances_kwh"])
+    assert all(v.endswith("\u00a0kWh") for v in energy["planned_appliances_kwh"].values())
     assert _call(api, "get_energy", {"day": "2026-10-01"})["error"] == "no_data"
     assert _call(api, "get_energy", {"day": "hier"})["error"] == "invalid_date"
     assert _call(api, "get_energy", {"day": "2099-01-01"})["error"] == "invalid_date"
@@ -808,3 +814,13 @@ def test_dynamic_prices_have_no_peak_hours() -> None:
     prices = {hour: 0.10 + hour / 100 for hour in range(24)}
     assert all("period" not in p for p in _price_ranges(prices, "fr"))
     assert _price_ranges(prices, "fr", periods=True)[-1]["period"] == "heures pleines"
+
+
+def test_energy_texts_follow_the_language() -> None:
+    """« 0,89 kWh » en français : avec le nombre brut, les modèles recopiaient « 0.89 kWh »."""
+    values = {"production_kwh": 0.89, "devices": {"Lave-linge": 1.5}}
+    assert _energy_texts(values, "fr") == {
+        "production_kwh": "0,89\u00a0kWh",
+        "devices": {"Lave-linge": "1,50\u00a0kWh"},
+    }
+    assert _energy_texts(values, "en")["production_kwh"] == "0.89\u00a0kWh"

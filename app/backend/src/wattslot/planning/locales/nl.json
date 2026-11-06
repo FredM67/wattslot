@@ -58,6 +58,7 @@
   "assistant.no_other": "Die dag is geen ander apparaat gepland.",
   "assistant.off_now": "Op dit moment: uit.",
   "assistant.running_now": "Op dit moment: in werking ({power}).",
+  "assistant.battery_end_of_day": "De batterij eindigt de dag op {percent}.",
   "assistant.home_about": "Apparaten van het huis, niet het dagplan: wat op een dag draait, staat in het plan van die dag.",
   "assistant.period.off_peak": "daluren",
   "assistant.period.peak": "piekuren",
