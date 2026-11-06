@@ -131,6 +131,11 @@ def _max_hour(hour: int) -> str:
     return "00:00" if hour <= 0 else f"{hour - 1:02d}:00-{hour:02d}:00"
 
 
+def _percent(value: float, lang: str) -> str:
+    """Pourcentage arrondi au format de la langue (« 12 % »)."""
+    return f"{number(value, lang, 0)}\u00a0%"
+
+
 def _summary(view: DayView, lang: str) -> dict[str, Any]:
     s = view.summary
     found: dict[str, Any] = {
@@ -140,11 +145,13 @@ def _summary(view: DayView, lang: str) -> dict[str, Any]:
         "sold_to_grid_kwh": round(s.grid_export_kwh, 2),
     }
     if view.battery_capacity_kwh is not None:
-        # « fin de journée » dans le nom : lu « la batterie est à 10 % » comme le niveau actuel.
-        found.update(
-            battery_end_of_day_percent=round(s.soc_end_percent),
-            battery_max_percent=round(s.soc_max_percent),
-            battery_max_at=_max_hour(s.soc_max_hour),
+        # En phrase : avec « battery_end_of_day_percent », qwen3 écrivait encore « la batterie se
+        # charge à 12 % à la fin de la journée » (banc du 06/11) ; avant ce nom, « la batterie est
+        # à 10 % » était lu comme le niveau actuel.
+        found["battery"] = catalog(lang)["assistant.battery_day"].format(
+            max=_percent(s.soc_max_percent, lang),
+            at=_max_hour(s.soc_max_hour),
+            end=_percent(s.soc_end_percent, lang),
         )
     # Indicateurs de la journée entière (Aujourd'hui, Hier : heures passées mesurées).
     found.update(_indicators(view, lang))
@@ -429,7 +436,7 @@ async def get_week(state: Any) -> dict[str, Any]:
                 **(
                     {
                         "battery": catalog(lang)["assistant.battery_end_of_day"].format(
-                            percent=f"{number(d.soc_end_percent, lang, 0)}\u00a0%"
+                            percent=_percent(d.soc_end_percent, lang)
                         )
                     }
                     if d.soc_end_percent is not None

@@ -59,6 +59,7 @@
   "assistant.off_now": "In questo momento: spento.",
   "assistant.running_now": "In questo momento: in funzione ({power}).",
   "assistant.battery_end_of_day": "La batteria finisce la giornata al {percent}.",
+  "assistant.battery_day": "La batteria sale al massimo al {max} ({at}) e finisce la giornata al {end}.",
   "assistant.home_about": "Apparecchi della casa, non il piano del giorno: ciò che funziona un giorno è nel piano di quel giorno.",
   "assistant.period.off_peak": "fascia economica",
   "assistant.period.peak": "fascia di punta",

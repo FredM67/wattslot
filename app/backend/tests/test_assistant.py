@@ -122,7 +122,10 @@ def test_day_plan_and_week(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> 
     plan = _call(api, "get_day_plan", {"day": "today"})
     assert plan["day"] == long_date(date(2025, 10, 15), "fr")  # en toutes lettres
     assert "Lave-linge : 11h" in plan["recommendation"]  # en français, la langue réglée
-    assert plan["summary"]["production_kwh"] > 0 and "battery_end_of_day_percent" in plan["summary"]
+    assert plan["summary"]["production_kwh"] > 0
+    # La batterie en phrase : « battery_end_of_day_percent » était lu « se charge à 12 % ».
+    assert plan["summary"]["battery"].startswith("La batterie monte au plus à ")
+    assert not any(k.startswith("battery_") for k in plan["summary"])
     assert "next_appliance" in plan  # selon l'heure : le prochain appareil, ou aucun
     # « Combien va me coûter la journée ? » : le coût, écrit dans la devise de la maison.
     tomorrow = _call(api, "get_day_plan", {"day": "tomorrow"})["summary"]
@@ -585,9 +588,8 @@ def test_other_days_say_what_today_means_and_the_maximum_is_an_hour_range(api: T
     today = _call(api, "get_day_plan", {"day": "today"})
     tomorrow = _call(api, "get_day_plan", {"day": "tomorrow"})
     assert "note" not in today and "note" not in tomorrow
-    assert (
-        "-" in today["summary"]["battery_max_at"] or today["summary"]["battery_max_at"] == "00:00"
-    )
+    at = today["summary"]["battery"].split("(")[1].split(")")[0]
+    assert "-" in at or at == "00:00"
     assert _max_hour(15) == "14:00-15:00" and _max_hour(0) == "00:00"
 
 
